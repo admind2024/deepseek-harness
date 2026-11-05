@@ -3,6 +3,7 @@ import type { ProductEvent } from '@deepseek-ai/dsh-client-product-analytics/typ
 
 import { randomUUID } from 'node:crypto'
 import { desktopAccountBackend, type DesktopAccountBackend } from './account-backend.ts'
+import type { WelcomeSyncFailure, WelcomeSyncRequest, WelcomeSyncResult } from './welcome-api.ts'
 
 /** Metadata needed before the native entry or workspace becomes visible. */
 export interface WelcomeState {
@@ -28,6 +29,23 @@ export interface DesktopWelcomeBackend {
    * @returns A safe write outcome without provider diagnostics.
    */
   save(apiKey: string): Promise<{ ok: boolean }>
+  /**
+   * @param request - one settings sync step.
+   * @returns the step outcome without Remote diagnostics.
+   */
+  sync(request: WelcomeSyncRequest): Promise<WelcomeSyncResult>
+}
+
+/** Map a `settingsSync` Remote failure to the class the welcome window explains. */
+function syncFailure(error: unknown): WelcomeSyncFailure {
+  if (!record(error)) return 'unavailable'
+  if (error.code === 'settings-sync/signed-out') return 'signed-out'
+  if (error.code === 'settings-sync/locked') return 'locked'
+  if (error.code === 'settings-sync/wrong-password') return 'wrong-password'
+  if (error.code !== 'settings-sync/service-failed' || !record(error.details)) return 'unavailable'
+  const status = error.details.status
+  if (status === 0) return 'network'
+  return status === 400 || status === 401 || status === 403 ? 'credentials' : 'unavailable'
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -49,10 +67,10 @@ export async function connectDesktopWelcome(
   const authenticated = await send(authenticatedUrl, { credentials: 'include' })
   await authenticated.body?.cancel()
   if (!authenticated.ok) throw new Error('desktop welcome: Web authentication failed')
-  const invoke = async (
+  const call = async (
     request: { namespace: string; method: string; args: Record<string, unknown> },
     signal?: AbortSignal,
-  ): Promise<unknown> => {
+  ): Promise<Record<string, unknown>> => {
     const rpcId = randomUUID()
     const method = `${request.namespace}/${request.method}`
     const response = await send(new URL(`/api/${method}`, origin).href, {
@@ -62,11 +80,18 @@ export async function connectDesktopWelcome(
     })
     if (!response.ok) throw new Error('desktop welcome: Web request failed')
     const envelope: unknown = await response.json()
-    if (!record(envelope) || envelope.type !== 'server-response' || envelope.rpcId !== rpcId
-      || !record(envelope.result) || envelope.result.ok !== true) {
+    if (!record(envelope) || envelope.type !== 'server-response' || envelope.rpcId !== rpcId || !record(envelope.result)) {
       throw new Error('desktop welcome: Web RPC failed')
     }
-    return envelope.result.value
+    return envelope.result
+  }
+  const invoke = async (
+    request: { namespace: string; method: string; args: Record<string, unknown> },
+    signal?: AbortSignal,
+  ): Promise<unknown> => {
+    const result = await call(request, signal)
+    if (result.ok !== true) throw new Error('desktop welcome: Web RPC failed')
+    return result.value
   }
   const account = desktopAccountBackend(origin, invoke, cookies)
   const settingsAndReference = async () => {
@@ -133,6 +158,25 @@ export async function connectDesktopWelcome(
       const settings = await invoke({ namespace: 'settings', method: 'describe', args: {} })
       if (!record(settings) || !Array.isArray(settings.namespaces)) throw new Error('desktop welcome: missing settings namespaces')
       return localePreference(settings.namespaces)
+    },
+    async sync(request) {
+      const { method, ...args } = request
+      let result: Record<string, unknown>
+      try {
+        result = await call({ namespace: 'settingsSync', method, args })
+      } catch {
+        // Transport failures carry no user-actionable detail beyond reachability.
+        return { ok: false, failure: 'network' }
+      }
+      if (result.ok !== true) return { ok: false, failure: syncFailure(result.error) }
+      const value = result.value
+      if (method === 'sync') {
+        const conflicts = record(value) && Array.isArray(value.conflicts) ? value.conflicts.filter(path => typeof path === 'string') : []
+        return { ok: true, signedIn: true, unlocked: true, conflicts }
+      }
+      if (method === 'requestCode') return { ok: true, signedIn: false, unlocked: false, conflicts: [] }
+      if (!record(value)) return { ok: false, failure: 'unavailable' }
+      return { ok: true, signedIn: value.signedIn === true, unlocked: value.unlocked === true, conflicts: [] }
     },
     async save(apiKey) {
       if (!/^[\x21-\x7e]+$/.test(apiKey)) return { ok: false }

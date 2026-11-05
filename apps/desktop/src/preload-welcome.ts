@@ -3,7 +3,7 @@ import type { AccountView, SignInAttemptId } from '@deepseek-ai/dsh-deepseek-acc
 
 import { contextBridge, ipcRenderer } from 'electron'
 import { resolveDesktopLocale } from './locale.ts'
-import { WELCOME_IPC, type WelcomeApi, type WelcomeNotice, type WelcomeSaveResult } from './welcome-api.ts'
+import { WELCOME_IPC, type WelcomeApi, type WelcomeNotice, type WelcomeSaveResult, type WelcomeSyncResult } from './welcome-api.ts'
 
 const prefix = '--dsh-welcome-locale='
 const locale = process.argv.find(argument => argument.startsWith(prefix))?.slice(prefix.length)
@@ -25,5 +25,6 @@ const api: WelcomeApi = {
   },
   saveApiKey: (value: string) => ipcRenderer.invoke(WELCOME_IPC.saveApiKey, value) as Promise<WelcomeSaveResult>,
   skip: () => ipcRenderer.invoke(WELCOME_IPC.skip) as Promise<void>,
+  sync: request => ipcRenderer.invoke(WELCOME_IPC.sync, request) as Promise<WelcomeSyncResult>,
 }
 contextBridge.exposeInMainWorld('dshWelcome', api)

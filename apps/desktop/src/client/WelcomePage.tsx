@@ -4,9 +4,10 @@ import type { FormEvent } from 'react'
 import { Toast } from '@deepseek-ai/dsh-client-ui-primitives/src/Toast.tsx'
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives/src/StateDot.tsx'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
-import type { WelcomeApi } from '../welcome-api.ts'
+import type { WelcomeApi, WelcomeSyncFailure, WelcomeSyncRequest } from '../welcome-api.ts'
 
-type Page = 'entry' | 'key' | 'account'
+type Page = 'entry' | 'key' | 'account' | 'sync'
+type SyncStep = 'email' | 'code' | 'secret' | 'conflict'
 
 /**
  * Render the standalone welcome flow using shell-owned operations and localized copy.
@@ -35,6 +36,11 @@ export function Welcome({ api }: { api: WelcomeApi }) {
   const input = useRef<HTMLInputElement>(null)
   const keyButton = useRef<HTMLButtonElement>(null)
   const focusEntry = useRef(false)
+  const [syncStep, setSyncStep] = useState<SyncStep>('email')
+  const [syncEmail, setSyncEmail] = useState('')
+  const [syncSecret, setSyncSecret] = useState('')
+  const [syncCode, setSyncCode] = useState('')
+  const [syncConflicts, setSyncConflicts] = useState<readonly string[]>([])
 
   function navigate(next: Page) {
     pageRef.current = next
@@ -111,6 +117,45 @@ export function Welcome({ api }: { api: WelcomeApi }) {
       if (mounted.current) setBusy(false)
     }
   }
+  const syncFailureText = (failure: WelcomeSyncFailure): string => failure === 'wrong-password' ? m.welcomeSyncWrongPassword
+    : failure === 'credentials' ? m.welcomeSyncCredentials : failure === 'network' ? m.welcomeSyncNetwork : m.welcomeSyncFailed
+  async function syncStepRun(request: WelcomeSyncRequest): Promise<void> {
+    if (busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
+    setError('')
+    try {
+      let result = await api.sync(request)
+      if (result.ok && request.method !== 'sync' && request.method !== 'requestCode' && result.unlocked) result = await api.sync({ method: 'sync', mode: 'merge' })
+      if (!mounted.current) return
+      if (!result.ok) {
+        if (result.failure === 'signed-out') setSyncStep('email')
+        else if (result.failure === 'locked') setSyncStep('secret')
+        setError(syncFailureText(result.failure))
+      } else if (request.method === 'requestCode') {
+        setSyncStep('code')
+      } else if (result.conflicts.length > 0) {
+        setSyncConflicts(result.conflicts)
+        setSyncStep('conflict')
+      } else if (result.signedIn && !result.unlocked) {
+        setSyncSecret('')
+        setSyncStep('secret')
+      } else if (!result.signedIn) {
+        setSyncStep('email')
+      }
+    } catch {
+      if (mounted.current) setError(m.welcomeSyncFailed)
+    } finally {
+      busyRef.current = false
+      if (mounted.current) setBusy(false)
+    }
+  }
+  function openSync() {
+    setError('')
+    setSyncStep('email')
+    navigate('sync')
+    void syncStepRun({ method: 'status' })
+  }
   async function skip() {
     if (busyRef.current) return
     busyRef.current = true
@@ -169,7 +214,7 @@ export function Welcome({ api }: { api: WelcomeApi }) {
   const title = phase === 'initializing' ? m.welcomeAuthStarting
     : waiting ? m.welcomeAuthWaiting : phase === 'expired' ? m.welcomeAuthExpired
       : phase === 'failed' ? m.welcomeAuthFailed : m.welcomeAuthExchanging
-  const heading = page === 'entry' ? 'welcome-heading' : page === 'key' ? 'key-title' : 'auth-status'
+  const heading = page === 'entry' ? 'welcome-heading' : page === 'key' ? 'key-title' : page === 'sync' ? 'sync-title' : 'auth-status'
 
   return <>
     {expiryNotice && <Toast text={m.welcomeSessionExpired} onDone={() => { setExpiryNotice(false) }} />}
@@ -188,6 +233,41 @@ export function Welcome({ api }: { api: WelcomeApi }) {
             aria-describedby="key-description key-error" aria-invalid={error !== ''} placeholder={m.welcomeKeyPlaceholder}
             value={draft} disabled={busy} onChange={(event) => { setDraft(event.target.value); setError('') }} />
           <p id="key-error" className="key-error" role="alert" hidden={error === ''}>{error}</p>
+        </div>
+      </form>
+      <form id="sync-form" className="key-form" hidden={page !== 'sync'} noValidate aria-busy={busy} onSubmit={(event) => {
+        event.preventDefault()
+        if (syncStep === 'email') void syncStepRun({ method: 'signInWithPassword', email: syncEmail.trim(), password: syncSecret })
+        else if (syncStep === 'code') void syncStepRun({ method: 'verifyCode', email: syncEmail.trim(), code: syncCode.trim() })
+        else if (syncStep === 'secret') void syncStepRun({ method: 'unlock', password: syncSecret })
+      }}>
+        <header className="key-heading">
+          <h1 id="sync-title">{syncStep === 'secret' ? m.welcomeSyncSecretTitle : m.welcomeSyncTitle}</h1>
+          <p id="sync-description">{syncStep === 'secret' ? m.welcomeSyncSecretDescription : syncStep === 'code' ? m.welcomeSyncCodeSent
+            : syncStep === 'conflict' ? m.welcomeSyncConflict : m.welcomeSyncDescription}</p>
+        </header>
+        <div className="key-field">
+          {syncStep === 'email' && <>
+            <label className="visually-hidden" htmlFor="sync-email">{m.welcomeSyncEmail}</label>
+            <input id="sync-email" type="email" autoComplete="username" placeholder={m.welcomeSyncEmail} value={syncEmail} disabled={busy}
+              onChange={(event) => { setSyncEmail(event.target.value); setError('') }} />
+            <label className="visually-hidden" htmlFor="sync-password">{m.welcomeSyncPassword}</label>
+            <input id="sync-password" type="password" autoComplete="current-password" placeholder={m.welcomeSyncPassword} value={syncSecret} disabled={busy}
+              onChange={(event) => { setSyncSecret(event.target.value); setError('') }} />
+          </>}
+          {syncStep === 'code' && <>
+            <label className="visually-hidden" htmlFor="sync-code">{m.welcomeSyncCode}</label>
+            <input id="sync-code" inputMode="numeric" autoComplete="one-time-code" placeholder={m.welcomeSyncCode} value={syncCode} disabled={busy}
+              onChange={(event) => { setSyncCode(event.target.value); setError('') }} />
+          </>}
+          {syncStep === 'secret' && <>
+            <label className="visually-hidden" htmlFor="sync-secret">{m.welcomeSyncSecret}</label>
+            <input id="sync-secret" type="password" autoComplete="new-password" placeholder={m.welcomeSyncSecret} value={syncSecret} disabled={busy}
+              onChange={(event) => { setSyncSecret(event.target.value); setError('') }} />
+          </>}
+          {syncStep === 'conflict' && <p id="sync-conflicts">{syncConflicts.join(', ')}</p>}
+          {busy && syncStep !== 'email' && <p role="status">{m.welcomeSyncRestoring}</p>}
+          <p id="sync-error" className="key-error" role="alert" hidden={error === '' || page !== 'sync'}>{error}</p>
         </div>
       </form>
       <section id="auth-page" className={`key-heading ${waiting ? 'auth-waiting' : phase === 'expired' ? 'auth-expired' : ''}`}
@@ -211,6 +291,26 @@ export function Welcome({ api }: { api: WelcomeApi }) {
       <div id="entry-actions" className="actions" hidden={page !== 'entry'}>
         <button id="sign-in" className="primary" type="button" onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'sign_in' }); void start() }}>{m.welcomeSignIn}</button>
         <button ref={keyButton} id="api-key" className="secondary" type="button" onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'api-key' }); navigate('key') }}>{m.welcomeApiKey}</button>
+        <button id="sync-entry" className="secondary" type="button" onClick={openSync}>{m.welcomeSync}</button>
+      </div>
+      <div id="sync-actions" className="actions" hidden={page !== 'sync'}>
+        {syncStep === 'email' && <>
+          <button id="sync-sign-in" className="primary" type="submit" form="sync-form" disabled={busy || syncEmail.trim() === '' || syncSecret === ''}>{m.welcomeSyncSignIn}</button>
+          <button id="sync-send-code" className="secondary" type="button" disabled={busy || syncEmail.trim() === ''}
+            onClick={() => { void syncStepRun({ method: 'requestCode', email: syncEmail.trim() }) }}>{m.welcomeSyncSendCode}</button>
+        </>}
+        {syncStep === 'code' && <button id="sync-verify" className="primary" type="submit" form="sync-form" disabled={busy || syncCode.trim() === ''}>{m.welcomeSyncVerify}</button>}
+        {syncStep === 'secret' && <button id="sync-unlock" className="primary" type="submit" form="sync-form" disabled={busy || syncSecret === ''}>{m.welcomeSyncUnlock}</button>}
+        {syncStep === 'conflict' && <>
+          <button id="sync-use-remote" className="primary" type="button" disabled={busy}
+            onClick={() => { void syncStepRun({ method: 'sync', mode: 'prefer-remote' }) }}>{m.welcomeSyncUseRemote}</button>
+          <button id="sync-keep-local" className="secondary" type="button" disabled={busy}
+            onClick={() => { void syncStepRun({ method: 'sync', mode: 'prefer-local' }) }}>{m.welcomeSyncKeepLocal}</button>
+        </>}
+        <button id="sync-back" className="back" type="button" disabled={busy} onClick={() => {
+          if (busyRef.current) return
+          setError(''); setSyncSecret(''); setSyncCode(''); focusEntry.current = true; navigate('entry')
+        }}>{m.welcomeSyncBack}</button>
       </div>
       <div id="key-actions" className="actions" hidden={page !== 'key'}>
         <button id="save-key" className="primary" type="submit" form="key-form" disabled={busy || draft.trim() === ''}>{m.welcomeKeySave}</button>

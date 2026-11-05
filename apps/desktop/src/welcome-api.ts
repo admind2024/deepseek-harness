@@ -15,6 +15,7 @@ export const WELCOME_IPC = {
   copyLink: 'dsh-welcome:copy-link',
   state: 'dsh-welcome:state',
   takeNotice: 'dsh-welcome:take-notice',
+  sync: 'dsh-welcome:sync',
 } as const
 
 /** Credential writes return a safe outcome without exposing Host diagnostics. */
@@ -22,6 +23,23 @@ export type WelcomeSaveResult = { readonly ok: true } | { readonly ok: false }
 
 /** One-time notification retained by the main process until Welcome receives it. */
 export type WelcomeNotice = 'session-expired'
+
+/** One settings sync step the welcome window may request; each maps to one `settingsSync` Remote method. */
+export type WelcomeSyncRequest =
+  | { readonly method: 'status' }
+  | { readonly method: 'signInWithPassword'; readonly email: string; readonly password: string }
+  | { readonly method: 'requestCode'; readonly email: string }
+  | { readonly method: 'verifyCode'; readonly email: string; readonly code: string }
+  | { readonly method: 'unlock'; readonly password: string }
+  | { readonly method: 'sync'; readonly mode: 'merge' | 'prefer-local' | 'prefer-remote' }
+
+/** Failure classes the welcome window can explain; the Remote's diagnostics stay in the main process. */
+export type WelcomeSyncFailure = 'signed-out' | 'locked' | 'wrong-password' | 'credentials' | 'network' | 'unavailable'
+
+/** Safe projection of one sync step: sign-in state, or the conflicting paths of a sync pass. */
+export type WelcomeSyncResult =
+  | { readonly ok: true; readonly signedIn: boolean; readonly unlocked: boolean; readonly conflicts: readonly string[] }
+  | { readonly ok: false; readonly failure: WelcomeSyncFailure }
 
 type WelcomeEventName = 'auth_page_view' | 'auth_page_click' | 'api_key_save_click'
 
@@ -46,6 +64,12 @@ export interface WelcomeOperations {
    * @returns whether the write completed, without private error details.
    */
   saveApiKey(value: string): Promise<WelcomeSaveResult>
+  /**
+   * Run one settings sync step through the Host; a sync pass without conflicts enters the workspace.
+   * @param request - validated step and its inputs.
+   * @returns the safe step outcome.
+   */
+  sync(request: WelcomeSyncRequest): Promise<WelcomeSyncResult>
   /**
    * Enter the workspace without writing an onboarding-completion setting.
    * @returns completion after the workspace opens.

@@ -1279,6 +1279,12 @@ async function main(): Promise<void> {
           return { ok: true }
         },
         skip: enterWorkspace,
+        sync: async (request) => {
+          if (backend.host === undefined || welcomeBackend === undefined) return { ok: false, failure: 'unavailable' }
+          const result = await welcomeBackend.sync(request)
+          if (request.method === 'sync' && result.ok && result.conflicts.length === 0) await enterWorkspace()
+          return result
+        },
       })
       const window = welcomeWindow
       window.once('closed', () => {

@@ -6,7 +6,7 @@ import { Welcome } from '../src/client/WelcomePage.tsx'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resolveDesktopLocale } from '../src/locale.ts'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
-import type { WelcomeSaveResult, WelcomeNotice } from '../src/welcome-api.ts'
+import type { WelcomeSaveResult, WelcomeNotice, WelcomeSyncRequest, WelcomeSyncResult } from '../src/welcome-api.ts'
 
 const html = readFileSync(join(import.meta.dirname, '../renderer/welcome.html'), 'utf8')
 afterEach(cleanup)
@@ -25,6 +25,8 @@ function mount(language = 'zh-CN', takeNotice = vi.fn<() => Promise<WelcomeNotic
     ...resolveDesktopLocale(language),
     saveApiKey: vi.fn<(value: string) => Promise<WelcomeSaveResult>>().mockResolvedValue({ ok: true }),
     skip: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    sync: vi.fn<(request: WelcomeSyncRequest) => Promise<WelcomeSyncResult>>()
+      .mockResolvedValue({ ok: true, signedIn: false, unlocked: false, conflicts: [] }),
   }
   const mounted = render(<Welcome api={api} />)
   const input = document.querySelector('input')!
@@ -340,4 +342,86 @@ it('reports each return to the welcome entry once, including account cancellatio
   fireEvent.click(view.button('#sign-in'))
   await act(async () => { pending.resolve({ links: { usageUrl: 'http://localhost/usage', topUpUrl: 'http://localhost/top_up' }, status: 'signed-out', attempt: null }) })
   expect(view.api.analytics.mock.calls.map(([action]) => action)).toEqual(['auth_page_click', 'auth_page_view', 'auth_page_click', 'auth_page_view'])
+})
+
+describe('desktop welcome settings sync', () => {
+  const status = (signedIn: boolean, unlocked: boolean, conflicts: readonly string[] = []): WelcomeSyncResult =>
+    ({ ok: true, signedIn, unlocked, conflicts })
+
+  it('signs in with an own account, unlocks, and restores without the DeepSeek account', async () => {
+    const view = mount('en')
+    view.api.sync
+      .mockResolvedValueOnce(status(false, false))
+      .mockResolvedValueOnce(status(true, false))
+      .mockResolvedValueOnce(status(true, true))
+      .mockResolvedValueOnce(status(true, true))
+    await act(async () => { view.button('#sync-entry').click() })
+    expect(view.api.sync).toHaveBeenCalledWith({ method: 'status' })
+    expect(document.getElementById('sync-title')!.textContent).toBe('Restore your settings')
+    fireEvent.change(document.getElementById('sync-email')!, { target: { value: ' me@example.com ' } })
+    fireEvent.change(document.getElementById('sync-password')!, { target: { value: 'login' } })
+    await act(async () => { fireEvent.submit(document.getElementById('sync-form')!) })
+    expect(view.api.sync).toHaveBeenCalledWith({ method: 'signInWithPassword', email: 'me@example.com', password: 'login' })
+    expect(document.getElementById('sync-title')!.textContent).toBe('Enter your sync password')
+    expect((document.getElementById('sync-secret') as HTMLInputElement).value).toBe('')
+    fireEvent.change(document.getElementById('sync-secret')!, { target: { value: 'secret' } })
+    await act(async () => { fireEvent.submit(document.getElementById('sync-form')!) })
+    expect(view.api.sync).toHaveBeenCalledWith({ method: 'unlock', password: 'secret' })
+    expect(view.api.sync).toHaveBeenLastCalledWith({ method: 'sync', mode: 'merge' })
+    expect(view.api.startSignIn).not.toHaveBeenCalled()
+  })
+
+  it('signs in by emailed code and resolves a settings conflict', async () => {
+    const view = mount('en')
+    view.api.sync
+      .mockResolvedValueOnce(status(false, false))
+      .mockResolvedValueOnce(status(false, false))
+      .mockResolvedValueOnce(status(true, true))
+      .mockResolvedValueOnce(status(true, true, ['profiles/web/cordis.patch.yml']))
+      .mockResolvedValueOnce(status(true, true))
+    await act(async () => { view.button('#sync-entry').click() })
+    fireEvent.change(document.getElementById('sync-email')!, { target: { value: 'me@example.com' } })
+    await act(async () => { view.button('#sync-send-code').click() })
+    expect(document.getElementById('sync-description')!.textContent).toBe('We sent a sign-in code to your email.')
+    fireEvent.change(document.getElementById('sync-code')!, { target: { value: '123456' } })
+    await act(async () => { fireEvent.submit(document.getElementById('sync-form')!) })
+    expect(view.api.sync).toHaveBeenCalledWith({ method: 'verifyCode', email: 'me@example.com', code: '123456' })
+    expect(document.getElementById('sync-conflicts')!.textContent).toBe('profiles/web/cordis.patch.yml')
+    await act(async () => { view.button('#sync-use-remote').click() })
+    expect(view.api.sync).toHaveBeenLastCalledWith({ method: 'sync', mode: 'prefer-remote' })
+  })
+
+  it.each([
+    ['wrong-password', 'The sync password does not match this account.'],
+    ['credentials', 'The email, password, or code is not correct.'],
+    ['network', 'Could not reach the sync service. Check your connection.'],
+    ['unavailable', 'Sync failed. Please try again.'],
+  ] as const)('explains a %s failure and returns to the entry page', async (failure, text) => {
+    const view = mount('en')
+    view.api.sync.mockResolvedValueOnce(status(true, false)).mockResolvedValueOnce({ ok: false, failure })
+    await act(async () => { view.button('#sync-entry').click() })
+    fireEvent.change(document.getElementById('sync-secret')!, { target: { value: 'x' } })
+    await act(async () => { fireEvent.submit(document.getElementById('sync-form')!) })
+    expect(document.getElementById('sync-error')!.textContent).toBe(text)
+    await act(async () => { view.button('#sync-back').click() })
+    expect(document.querySelector('main')!.getAttribute('aria-labelledby')).toBe('welcome-heading')
+  })
+
+  it('returns to the matching step when the Host reports sign-out or a missing key, and survives a closed channel', async () => {
+    const view = mount('en')
+    view.api.sync
+      .mockResolvedValueOnce(status(true, true))
+      .mockResolvedValueOnce({ ok: false, failure: 'locked' })
+      .mockResolvedValueOnce({ ok: false, failure: 'signed-out' })
+      .mockRejectedValueOnce(new Error('closed'))
+    await act(async () => { view.button('#sync-entry').click() })
+    expect(document.getElementById('sync-secret')).not.toBeNull()
+    fireEvent.change(document.getElementById('sync-secret')!, { target: { value: 'x' } })
+    await act(async () => { fireEvent.submit(document.getElementById('sync-form')!) })
+    expect(document.getElementById('sync-email')).not.toBeNull()
+    fireEvent.change(document.getElementById('sync-email')!, { target: { value: 'me@example.com' } })
+    fireEvent.change(document.getElementById('sync-password')!, { target: { value: 'p' } })
+    await act(async () => { fireEvent.submit(document.getElementById('sync-form')!) })
+    expect(document.getElementById('sync-error')!.textContent).toBe('Sync failed. Please try again.')
+  })
 })

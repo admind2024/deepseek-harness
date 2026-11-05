@@ -47,6 +47,7 @@ const operations = {
   copySignInLink: async () => undefined,
   saveApiKey: () => Promise.resolve({ ok: true as const }),
   skip: () => Promise.resolve(),
+  sync: vi.fn(() => Promise.resolve({ ok: true as const, signedIn: false, unlocked: false, conflicts: [] })),
 }
 
 describe('desktop welcome window', () => {
@@ -138,6 +139,11 @@ describe('desktop welcome window', () => {
     await expect(copy(own, 42)).rejects.toThrow('invalid attempt')
     await copy(own, 'attempt')
     expect(copySignInLink).toHaveBeenCalledExactlyOnceWith('attempt')
+    const sync = electron.handlers.get(WELCOME_IPC.sync)!
+    await expect(sync({ ...own, senderFrame: {} }, { method: 'status' })).rejects.toThrow('unowned frame')
+    await expect(sync(own, { method: 'signOut' })).rejects.toThrow('invalid sync request')
+    expect(await sync(own, { method: 'unlock', password: 'secret', extra: true })).toEqual({ ok: true, signedIn: false, unlocked: false, conflicts: [] })
+    expect(operations.sync).toHaveBeenLastCalledWith({ method: 'unlock', password: 'secret' })
     window.once.mock.calls[0]![1]()
     expect(electron.handlers.size).toBe(0)
   })

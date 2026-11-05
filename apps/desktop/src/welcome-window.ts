@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, ipcMain, type BrowserWindowConstructorOptions, type IpcMainInvokeEvent } from 'electron'
 import type { DesktopLocale } from './locale.ts'
-import { WELCOME_IPC, type WelcomeOperations } from './welcome-api.ts'
+import { WELCOME_IPC, type WelcomeOperations, type WelcomeSyncRequest } from './welcome-api.ts'
 
 /**
  * Resolve the fixed-size welcome window's native material and controls.
@@ -47,6 +47,37 @@ export function welcomeWindowOptions(platform: NodeJS.Platform, locale: DesktopL
   }
 }
 
+const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 1024
+
+/**
+ * Validate a renderer sync request before it reaches the Host.
+ * @param value - untrusted renderer payload.
+ * @returns the request with exactly the fields its method takes.
+ */
+export function welcomeSyncRequest(value: unknown): WelcomeSyncRequest {
+  if (typeof value !== 'object' || value === null) throw new Error('desktop welcome: invalid sync request')
+  const request = value as Record<string, unknown>
+  switch (request.method) {
+    case 'status': return { method: 'status' }
+    case 'signInWithPassword':
+      if (text(request.email) && text(request.password)) return { method: 'signInWithPassword', email: request.email, password: request.password }
+      break
+    case 'requestCode':
+      if (text(request.email)) return { method: 'requestCode', email: request.email }
+      break
+    case 'verifyCode':
+      if (text(request.email) && text(request.code)) return { method: 'verifyCode', email: request.email, code: request.code }
+      break
+    case 'unlock':
+      if (text(request.password)) return { method: 'unlock', password: request.password }
+      break
+    case 'sync':
+      if (request.mode === 'merge' || request.mode === 'prefer-local' || request.mode === 'prefer-remote') return { method: 'sync', mode: request.mode }
+      break
+  }
+  throw new Error('desktop welcome: invalid sync request')
+}
+
 let disposeActiveHandlers: (() => void) | undefined
 
 /**
@@ -66,7 +97,7 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
     active = false
     for (const channel of [
       WELCOME_IPC.analyticsEnabled, WELCOME_IPC.analytics, WELCOME_IPC.takeNotice, WELCOME_IPC.saveApiKey,
-      WELCOME_IPC.skip, WELCOME_IPC.start, WELCOME_IPC.cancel, WELCOME_IPC.copyLink,
+      WELCOME_IPC.skip, WELCOME_IPC.start, WELCOME_IPC.cancel, WELCOME_IPC.copyLink, WELCOME_IPC.sync,
     ]) {
       ipcMain.removeHandler(channel)
     }
@@ -101,6 +132,10 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
   ipcMain.handle(WELCOME_IPC.skip, async (event) => {
     assertSender(event)
     await operations.skip()
+  })
+  ipcMain.handle(WELCOME_IPC.sync, async (event, request: unknown) => {
+    assertSender(event)
+    return operations.sync(welcomeSyncRequest(request))
   })
   ipcMain.handle(WELCOME_IPC.start, async (event) => { assertSender(event); return operations.startSignIn() })
   ipcMain.handle(WELCOME_IPC.cancel, async (event, id: unknown) => {
