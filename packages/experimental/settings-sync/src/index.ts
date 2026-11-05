@@ -15,7 +15,7 @@ import { brandString } from '@deepseek-ai/dsh-brand'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { checkVerifier, createSalt, createVerifier, deriveKey, digest, open, seal, type KdfParams } from './crypto.ts'
 import { decide } from './decide.ts'
-import { applyItem, collectLocalItems, CREDENTIALS_PATH, mergeCredentialItems, type ItemLocations, type LocalItem } from './items.ts'
+import { applyItem, collectLocalItems, CREDENTIALS_PATH, isSyncedPath, mergeCredentialItems, type ItemLocations, type LocalItem } from './items.ts'
 import { serviceStatus, SupabaseClient, type SupabaseSession, type SupabaseSpec } from './supabase.ts'
 import type { SyncDeviceId, SyncMode, SyncReport, SyncStatus, SyncUserId } from './types.ts'
 
@@ -208,7 +208,7 @@ export default class SettingsSync extends TypertRemoteService {
     }
     const deviceId = state.deviceId
     const local = new Map((await collectLocalItems(locations, this.ctx.credentials)).map(item => [item.path, item]))
-    const remote = new Map((await this.client.listItems(session)).map(item => [item.path, item]))
+    const remote = new Map((await this.client.listItems(session)).filter(item => isSyncedPath(item.path)).map(item => [item.path, item]))
     const report = { uploaded: [] as string[], downloaded: [] as string[], unchanged: [] as string[], conflicts: [] as string[] }
 
     // Credential references merge by name instead of conflicting, so keys held by different devices accumulate.
@@ -244,10 +244,9 @@ export default class SettingsSync extends TypertRemoteService {
           break
         }
         case 'download':
-          if (await applyItem(locations, this.ctx.credentials, path, open(key, action.remote.sealed, path))) {
-            state.items[path] = { version: action.remote.version, sha256: action.remote.sha256 }
-            report.downloaded.push(path)
-          }
+          await applyItem(locations, this.ctx.credentials, path, open(key, action.remote.sealed, path))
+          state.items[path] = { version: action.remote.version, sha256: action.remote.sha256 }
+          report.downloaded.push(path)
           break
         case 'adopt':
           state.items[path] = { version: action.remote.version, sha256: action.remote.sha256 }
@@ -278,7 +277,7 @@ export default class SettingsSync extends TypertRemoteService {
 
   private locations(): ItemLocations {
     const profile = this.ctx.profileContext
-    return { home: profile.home, profileName: profile.name, patchPath: profile.patchPath }
+    return { home: profile.home, patchPath: profile.patchPath }
   }
 
   private statePath(): string {

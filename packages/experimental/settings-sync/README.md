@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `settingsSync` Remote signs in to a Supabase project and exchanges the active profile's `cordis.patch.yml`, `<DSH_HOME>/flashx.yml`, and the credential references stored in `.credentials.yaml`. Every item is encrypted on the device with a key derived from a separate sync password; Supabase stores only ciphertext and keyed digests.
+The `settingsSync` Remote signs in to a Supabase project and exchanges the active profile's `cordis.patch.yml` (one item for every profile name, so Desktop and Web devices share it), `<DSH_HOME>/flashx.yml`, and the credential references stored in `.credentials.yaml`. Every item is encrypted on the device with a key derived from a separate sync password; Supabase stores only ciphertext and keyed digests.
 
 ## Table of Contents
 
@@ -45,7 +45,7 @@ The Supabase session and derived key are `grant` records `settings-sync/session`
 
 Each pass compares local digests, server versions, and `<DSH_HOME>/settings-sync/state.json`. A change on one side moves to the other side; equal content adopts the server version; a change on both sides is reported under `merge`, uploaded under `prefer-local`, and downloaded under `prefer-remote`. Uploads pass the last seen version, so a concurrent writer causes a conflict rather than an overwrite. Operations on one Host run serially.
 
-Downloaded files are written atomically with mode `0600`; credential references go through `ctx.credentials.set`. Only references the credential file stores are uploaded; environment and `.env` values stay local. Items of another profile name are left on the server. Credential references merge by name instead of conflicting: when this device changed them since its last pass its values win for shared names, otherwise the server's values win, and names present on only one side are kept. A removed reference is therefore not removed on other devices.
+Downloaded files are written atomically with mode `0600`; credential references go through `ctx.credentials.set`. Only references the credential file stores are uploaded; environment and `.env` values stay local. Server rows under paths this release does not sync, such as earlier per-profile paths, are left untouched. Credential references merge by name instead of conflicting: when this device changed them since its last pass its values win for shared names, otherwise the server's values win, and names present on only one side are kept. A removed reference is therefore not removed on other devices.
 
 </details>
 

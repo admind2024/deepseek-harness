@@ -19,11 +19,12 @@ export interface LocalItem {
 export interface ItemLocations {
   /** Harness home directory. */
   readonly home: string
-  /** Active profile name, used in the logical path so each profile syncs separately. */
-  readonly profileName: string
   /** Active profile patch file. */
   readonly patchPath: string
 }
+
+/** Logical path of the active profile's patch, independent of the profile name. */
+export const PROFILE_PATCH_PATH = 'profile/cordis.patch.yml'
 
 /** Logical path of the credential reference item. */
 export const CREDENTIALS_PATH = 'credentials/refs'
@@ -54,7 +55,8 @@ async function storedRefNames(home: string): Promise<string[]> {
 
 function filePaths(locations: ItemLocations): { path: string; kind: SyncItemKind; filename: string }[] {
   return [
-    { path: `profiles/${locations.profileName}/cordis.patch.yml`, kind: 'profile-patch', filename: locations.patchPath },
+    // One path for every profile name: Desktop (`desktop`) and Web (`web`) devices share the same settings.
+    { path: PROFILE_PATCH_PATH, kind: 'profile-patch', filename: locations.patchPath },
     { path: MODEL_SELECTION_FILE, kind: 'model-selection', filename: join(locations.home, MODEL_SELECTION_FILE) },
   ]
 }
@@ -82,27 +84,36 @@ export async function collectLocalItems(locations: ItemLocations, credentials: C
 }
 
 /**
+ * Whether this release reads and writes a logical path; rows under other paths, such as earlier per-profile paths,
+ * stay on the server untouched.
+ * @param path - logical item path.
+ * @returns whether the path is synced.
+ */
+export function isSyncedPath(path: string): boolean {
+  return path === CREDENTIALS_PATH || path === PROFILE_PATCH_PATH || path === MODEL_SELECTION_FILE
+}
+
+/**
  * Write one downloaded item to its local destination.
  * @param locations - this device's home and profile.
  * @param credentials - credential service receiving reference values.
  * @param path - logical item path.
  * @param content - decrypted item bytes.
- * @returns whether the path belongs to this device; items of other profiles are skipped.
+ * @returns after the item is written.
  */
 export async function applyItem(
   locations: ItemLocations, credentials: CredentialProvider, path: string, content: Buffer,
-): Promise<boolean> {
+): Promise<void> {
   if (path === CREDENTIALS_PATH) {
     for (const [name, value] of Object.entries(parseRefs(content))) {
       const ref = credentialRef(name)
       if ((await credentials.resolve(ref))?.value !== value) await credentials.set(ref, value)
     }
-    return true
+    return
   }
   const file = filePaths(locations).find(candidate => candidate.path === path)
-  if (file === undefined) return false
+  if (file === undefined) throw new Error(`settings-sync: ${path} is not a synced path`)
   await writeFileAtomic(file.filename, content, { mode: 0o600, dirMode: 0o700 })
-  return true
 }
 
 function parseRefs(content: Buffer): Record<string, string> {

@@ -1,5 +1,5 @@
 /** Failure paths keep local state consistent and report a typed reason. */
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { credentialKey, credentialRef } from '@deepseek-ai/dsh-credentials'
 import { expect, it } from 'vitest'
@@ -99,7 +99,7 @@ it('keeps a sign-in without email, survives revocation failure, and resets state
 
 it('uploads only file-stored keys and skips other profiles and invalid credential items', async () => {
   const a = await device()
-  const locations = { home: a.home, profileName: 'web', patchPath: a.patchPath }
+  const locations = { home: a.home, patchPath: a.patchPath }
   expect(await collectLocalItems(locations, a.ctx.credentials)).toEqual([])
   await writeFile(join(a.home, '.credentials.yaml'), 'version: 1\nrefs:\n', { mode: 0o600 })
   expect(await collectLocalItems(locations, a.ctx.credentials)).toEqual([])
@@ -109,8 +109,8 @@ it('uploads only file-stored keys and skips other profiles and invalid credentia
   await a.ctx.credentials.set(credentialRef('STORED_KEY'), 'stored')
   expect((await collectLocalItems(locations, a.ctx.credentials)).map(item => item.content.toString())).toEqual(['{"STORED_KEY":"stored"}'])
   delete process.env.SETTINGS_SYNC_ENV_ONLY
-  expect(await applyItem(locations, a.ctx.credentials, 'profiles/other/cordis.patch.yml', Buffer.from('x'))).toBe(false)
-  expect(await applyItem(locations, a.ctx.credentials, CREDENTIALS_PATH, Buffer.from('{"STORED_KEY":"stored"}'))).toBe(true)
+  await expect(applyItem(locations, a.ctx.credentials, 'profiles/other/cordis.patch.yml', Buffer.from('x'))).rejects.toThrow(/not a synced path/)
+  await applyItem(locations, a.ctx.credentials, CREDENTIALS_PATH, Buffer.from('{"STORED_KEY":"stored"}'))
   await expect(applyItem(locations, a.ctx.credentials, CREDENTIALS_PATH, Buffer.from('null'))).rejects.toThrow(/not an object/)
   await expect(applyItem(locations, a.ctx.credentials, CREDENTIALS_PATH, Buffer.from('{"bad name":"x"}'))).rejects.toThrow(/invalid credential/)
   await mkdir(join(a.home, 'flashx.yml'))
@@ -118,13 +118,18 @@ it('uploads only file-stored keys and skips other profiles and invalid credentia
   expect(serviceStatus(new Error('x'))).toBeUndefined()
 })
 
-it('keeps items of other profiles remote and counts a vanished server row as unchanged', async () => {
-  const web = await device('web'), cli = await device('headless')
-  for (const d of [web, cli]) { await d.sync.signInWithPassword('me@example.com', 'login-pass'); await d.sync.unlock('sync-pass') }
+it('shares the profile patch between devices whose profiles have different names and counts a vanished server row as unchanged', async () => {
+  const web = await device('web'), desktop = await device('desktop')
+  for (const d of [web, desktop]) { await d.sync.signInWithPassword('me@example.com', 'login-pass'); await d.sync.unlock('sync-pass') }
   await mkdir(join(web.home, 'profiles', 'web'), { recursive: true })
   await writeFile(web.patchPath, '- id: web\n')
   await web.sync.sync('merge')
-  expect(await cli.sync.sync('merge')).toEqual({ uploaded: [], downloaded: [], unchanged: [], conflicts: [] })
+  expect(await desktop.sync.sync('merge')).toMatchObject({ downloaded: ['profile/cordis.patch.yml'] })
+  expect(await readFile(desktop.patchPath, 'utf8')).toBe('- id: web\n')
+  server.items.get('me@example.com')?.set('profiles/web/cordis.patch.yml', {
+    path: 'profiles/web/cordis.patch.yml', kind: 'profile-patch', ciphertext: '\\x00', nonce: '\\x00', sha256: 'legacy', version: 1, deleted: false,
+  })
+  expect(await desktop.sync.sync('merge')).toEqual({ uploaded: [], downloaded: [], unchanged: ['profile/cordis.patch.yml'], conflicts: [] })
   server.items.get('me@example.com')?.clear()
-  expect(await web.sync.sync('merge')).toMatchObject({ uploaded: [], unchanged: ['profiles/web/cordis.patch.yml'] })
+  expect(await web.sync.sync('merge')).toMatchObject({ uploaded: [], unchanged: ['profile/cordis.patch.yml'] })
 })

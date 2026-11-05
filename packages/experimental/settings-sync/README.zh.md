@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`settingsSync` Remote 登录 Supabase 项目，并交换当前 profile 的 `cordis.patch.yml`、`<DSH_HOME>/flashx.yml` 以及 `.credentials.yaml` 中存储的凭据引用。每个条目都在设备上用由独立同步密码派生的密钥加密；Supabase 只保存密文与带密钥的摘要。
+`settingsSync` Remote 登录 Supabase 项目，并交换当前 profile 的 `cordis.patch.yml`（所有 profile 名共用一个条目，因此 Desktop 与 Web 设备共享）、`<DSH_HOME>/flashx.yml` 以及 `.credentials.yaml` 中存储的凭据引用。每个条目都在设备上用由独立同步密码派生的密钥加密；Supabase 只保存密文与带密钥的摘要。
 
 ## 目录
 
@@ -45,7 +45,7 @@ Supabase 会话与派生密钥是本地凭据存储中的 `grant` 记录 `settin
 
 每轮比较本地摘要、服务器版本与 `<DSH_HOME>/settings-sync/state.json`。一侧的变更移到另一侧；内容相同时采用服务器版本；两侧都变更时，`merge` 报告冲突，`prefer-local` 上传，`prefer-remote` 下载。上传携带最后看到的版本，因此并发写入者导致冲突而不是覆盖。同一 Host 上的操作串行执行。
 
-下载的文件以模式 `0600` 原子写入；凭据引用通过 `ctx.credentials.set` 写入。只上传凭据文件存储的引用；环境变量与 `.env` 中的值留在本地。其他 profile 名的条目留在服务器上。凭据引用按名称合并而不是冲突：若本设备自上次同步后修改过，则同名时以本设备的值为准，否则以服务器的值为准；只存在于一侧的名称都会保留。因此删除的引用不会在其他设备上被删除。
+下载的文件以模式 `0600` 原子写入；凭据引用通过 `ctx.credentials.set` 写入。只上传凭据文件存储的引用；环境变量与 `.env` 中的值留在本地。本版本不同步的路径（例如早先按 profile 区分的路径）下的服务器行保持不变。凭据引用按名称合并而不是冲突：若本设备自上次同步后修改过，则同名时以本设备的值为准，否则以服务器的值为准；只存在于一侧的名称都会保留。因此删除的引用不会在其他设备上被删除。
 
 </details>
 
