@@ -194,11 +194,13 @@ it.each(['zh-CN', 'en'])('renders %s browser fallback and copies only the active
   expect(view.document.querySelector('main')!.classList.contains('waiting-page')).toBe(false)
 })
 
-it('keeps a newer account notification when the start response arrives late', async () => {
+it('keeps a newer account notification when a retried start response arrives late', async () => {
   const view = mount()
   const started = Promise.withResolvers<AccountView>()
   view.api.startSignIn.mockReturnValueOnce(started.promise)
-  fireEvent.click(view.button('#sign-in'))
+  act(() => { view.api.onAccountState.mock.calls[0]![0]({ status: 'signed-out', links: { usageUrl: '', topUpUrl: '' },
+    attempt: { id: 'earlier' as NonNullable<AccountView['attempt']>['id'], phase: 'failed' } }) })
+  fireEvent.click(view.button('#auth-retry'))
   expect(view.button('#auth-cancel').disabled).toBe(true)
   const state: AccountView = { status: 'signed-out', links: { usageUrl: '', topUpUrl: '' },
     attempt: { id: 'attempt' as NonNullable<AccountView['attempt']>['id'], phase: 'expired' } }
@@ -279,7 +281,7 @@ it.each(['zh-CN', 'en'])('keeps the expiry notice visible after returning to Wel
     const notice = screen.getByRole('alert')
     expect(notice.textContent).toBe(view.api.messages.welcomeSessionExpired)
     await expect(`${notice.textContent}\n`).toMatchFileSnapshot(`./expected/welcome/${language}-expired.expected.txt`)
-    expect(view.button('#sign-in').closest('[hidden]')).toBeNull()
+    expect(view.button('#sync-entry').closest('[hidden]')).toBeNull()
     await act(async () => { await vi.advanceTimersByTimeAsync(4000) })
     expect(screen.queryByRole('alert')).toBeNull()
     await act(async () => { publish(expired) })
@@ -326,12 +328,12 @@ it.each(['zh-CN', 'en'])('returns from completed sign-in to the initial page aft
     attempt: { id: 'completed' as NonNullable<AccountView['attempt']>['id'], phase: 'succeeded' } }) })
   expect(view.document.querySelector<HTMLElement>('#auth-page')!.hidden).toBe(false)
   act(() => { publish({ status: 'signed-out', links, attempt: null }) })
-  expect(view.button('#sign-in').closest('[hidden]')).toBeNull()
+  expect(view.button('#sync-entry').closest('[hidden]')).toBeNull()
   expect(view.document.querySelector<HTMLElement>('#auth-page')!.hidden).toBe(true)
   await expect(view.copy()).toMatchFileSnapshot(`./expected/welcome/${language}.expected.txt`)
 })
 
-it('reports each return to the welcome entry once, including account cancellation', async () => {
+it('reports each return to the welcome entry once, including a cancelled account retry', async () => {
   const view = mount()
   expect(view.api.analytics).not.toHaveBeenCalled()
   fireEvent.click(view.button('#api-key'))
@@ -339,7 +341,9 @@ it('reports each return to the welcome entry once, including account cancellatio
   expect(view.api.analytics.mock.calls.map(([action]) => action)).toEqual(['auth_page_click', 'auth_page_view'])
   const pending = Promise.withResolvers<AccountView>()
   view.api.startSignIn.mockReturnValueOnce(pending.promise)
-  fireEvent.click(view.button('#sign-in'))
+  act(() => { view.api.onAccountState.mock.calls[0]![0]({ status: 'signed-out', links: { usageUrl: '', topUpUrl: '' },
+    attempt: { id: 'earlier' as NonNullable<AccountView['attempt']>['id'], phase: 'failed' } }) })
+  fireEvent.click(view.button('#auth-retry'))
   await act(async () => { pending.resolve({ links: { usageUrl: 'http://localhost/usage', topUpUrl: 'http://localhost/top_up' }, status: 'signed-out', attempt: null }) })
   expect(view.api.analytics.mock.calls.map(([action]) => action)).toEqual(['auth_page_click', 'auth_page_view', 'auth_page_click', 'auth_page_view'])
 })

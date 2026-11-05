@@ -289,9 +289,8 @@ export function Welcome({ api }: { api: WelcomeApi }) {
           onClick={() => { void cancel() }}>{m.welcomeAuthCancel}</button>
       </div>
       <div id="entry-actions" className="actions" hidden={page !== 'entry'}>
-        <button id="sign-in" className="primary" type="button" onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'sign_in' }); void start() }}>{m.welcomeSignIn}</button>
+        <button id="sync-entry" className="primary" type="button" onClick={openSync}>{m.welcomeSync}</button>
         <button ref={keyButton} id="api-key" className="secondary" type="button" onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'api-key' }); navigate('key') }}>{m.welcomeApiKey}</button>
-        <button id="sync-entry" className="secondary" type="button" onClick={openSync}>{m.welcomeSync}</button>
       </div>
       <div id="sync-actions" className="actions" hidden={page !== 'sync'}>
         {syncStep === 'email' && <>
