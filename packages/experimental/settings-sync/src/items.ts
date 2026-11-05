@@ -1,0 +1,109 @@
+/** Local sources of synced items: the active profile patch, the model selection file, and stored credential references. */
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import yaml from 'js-yaml'
+import type { CredentialProvider } from '@deepseek-ai/dsh-credentials'
+import { credentialRef, isCredentialRefName } from '@deepseek-ai/dsh-credentials'
+import { CREDENTIALS_FILENAME } from '@deepseek-ai/dsh-credentials-local'
+import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
+import type { SyncItemKind } from './types.ts'
+
+/** One item's current local bytes. */
+export interface LocalItem {
+  readonly path: string
+  readonly kind: SyncItemKind
+  readonly content: Buffer
+}
+
+/** Where items live on this device. */
+export interface ItemLocations {
+  /** Harness home directory. */
+  readonly home: string
+  /** Active profile name, used in the logical path so each profile syncs separately. */
+  readonly profileName: string
+  /** Active profile patch file. */
+  readonly patchPath: string
+}
+
+/** Logical path of the credential reference item. */
+export const CREDENTIALS_PATH = 'credentials/refs'
+const MODEL_SELECTION_FILE = 'flashx.yml'
+
+async function readOptional(filename: string): Promise<Buffer | undefined> {
+  try {
+    return await readFile(filename)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    throw error
+  }
+}
+
+/**
+ * Names under `refs` in the local credential file. The credential service cannot enumerate references, so the file is
+ * read for names only; values always come from the service.
+ */
+async function storedRefNames(home: string): Promise<string[]> {
+  const text = await readOptional(join(home, CREDENTIALS_FILENAME))
+  if (text === undefined) return []
+  const document = yaml.load(text.toString('utf8'))
+  if (typeof document !== 'object' || document === null || !('refs' in document)) return []
+  const refs = document.refs
+  if (typeof refs !== 'object' || refs === null) return []
+  return Object.keys(refs).filter(isCredentialRefName).sort()
+}
+
+function filePaths(locations: ItemLocations): { path: string; kind: SyncItemKind; filename: string }[] {
+  return [
+    { path: `profiles/${locations.profileName}/cordis.patch.yml`, kind: 'profile-patch', filename: locations.patchPath },
+    { path: MODEL_SELECTION_FILE, kind: 'model-selection', filename: join(locations.home, MODEL_SELECTION_FILE) },
+  ]
+}
+
+/**
+ * Read every local item that exists.
+ * @param locations - this device's home and profile.
+ * @param credentials - credential service supplying reference values.
+ * @returns items in stable path order; credential values appear only for references stored in the credential file.
+ */
+export async function collectLocalItems(locations: ItemLocations, credentials: CredentialProvider): Promise<LocalItem[]> {
+  const items: LocalItem[] = []
+  for (const file of filePaths(locations)) {
+    const content = await readOptional(file.filename)
+    if (content !== undefined) items.push({ path: file.path, kind: file.kind, content })
+  }
+  const refs: Record<string, string> = {}
+  for (const name of await storedRefNames(locations.home)) {
+    const resolved = await credentials.resolve(credentialRef(name))
+    /* v8 ignore next -- a reference removed between the file read and resolve is skipped */
+    if (resolved?.source === 'file') refs[name] = resolved.value
+  }
+  if (Object.keys(refs).length > 0) items.push({ path: CREDENTIALS_PATH, kind: 'credentials', content: Buffer.from(JSON.stringify(refs), 'utf8') })
+  return items.sort((a, b) => a.path.localeCompare(b.path))
+}
+
+/**
+ * Write one downloaded item to its local destination.
+ * @param locations - this device's home and profile.
+ * @param credentials - credential service receiving reference values.
+ * @param path - logical item path.
+ * @param content - decrypted item bytes.
+ * @returns whether the path belongs to this device; items of other profiles are skipped.
+ */
+export async function applyItem(
+  locations: ItemLocations, credentials: CredentialProvider, path: string, content: Buffer,
+): Promise<boolean> {
+  if (path === CREDENTIALS_PATH) {
+    const refs: unknown = JSON.parse(content.toString('utf8'))
+    if (typeof refs !== 'object' || refs === null) throw new Error('settings-sync: credential item is not an object')
+    for (const [name, value] of Object.entries(refs)) {
+      if (!isCredentialRefName(name) || typeof value !== 'string' || value === '') throw new Error(`settings-sync: invalid credential reference ${name}`)
+      const ref = credentialRef(name)
+      if ((await credentials.resolve(ref))?.value !== value) await credentials.set(ref, value)
+    }
+    return true
+  }
+  const file = filePaths(locations).find(candidate => candidate.path === path)
+  if (file === undefined) return false
+  await writeFileAtomic(file.filename, content, { mode: 0o600, dirMode: 0o700 })
+  return true
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Einstellungssynchronisierung",
+    "description": "Synchronisiert Einstellungen und API-Schlüssel zwischen Geräten mit Ende-zu-Ende-Verschlüsselung."
+  }
+}
