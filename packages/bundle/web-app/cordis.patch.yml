@@ -591,3 +591,14 @@
       name: '@deepseek-ai/dsh-agent-preset-registry'
       config:
         default: standard
+
+# Encrypted settings sync through the owner's Supabase project, on by default
+# so a new device can restore settings and keys from its first-run step.
+- insert:
+    - id: settings-sync
+      name: '@deepseek-ai/dsh-experimental-settings-sync'
+      config:
+        supabaseUrl: https://pedgschrivtpbzcoqniu.supabase.co
+        supabaseKey: sb_publishable_6Ge9TK7EGiERl-SReDY0Dw_rhvqA3db
+    - id: ui-settings-sync
+      name: '@deepseek-ai/dsh-experimental-client-ui-settings-sync'

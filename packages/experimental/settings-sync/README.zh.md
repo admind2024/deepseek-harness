@@ -45,7 +45,7 @@ Supabase 会话与派生密钥是本地凭据存储中的 `grant` 记录 `settin
 
 每轮比较本地摘要、服务器版本与 `<DSH_HOME>/settings-sync/state.json`。一侧的变更移到另一侧；内容相同时采用服务器版本；两侧都变更时，`merge` 报告冲突，`prefer-local` 上传，`prefer-remote` 下载。上传携带最后看到的版本，因此并发写入者导致冲突而不是覆盖。同一 Host 上的操作串行执行。
 
-下载的文件以模式 `0600` 原子写入；凭据引用通过 `ctx.credentials.set` 写入。只上传凭据文件存储的引用；环境变量与 `.env` 中的值留在本地。其他 profile 名的条目留在服务器上。
+下载的文件以模式 `0600` 原子写入；凭据引用通过 `ctx.credentials.set` 写入。只上传凭据文件存储的引用；环境变量与 `.env` 中的值留在本地。其他 profile 名的条目留在服务器上。凭据引用按名称合并而不是冲突：若本设备自上次同步后修改过，则同名时以本设备的值为准，否则以服务器的值为准；只存在于一侧的名称都会保留。因此删除的引用不会在其他设备上被删除。
 
 </details>
 
@@ -71,7 +71,7 @@ Supabase 会话与派生密钥是本地凭据存储中的 `grant` 记录 `settin
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- 尚无设置界面、可选 bundle 或 Realtime 实时同步；需直接调用 Remote。
+- 没有 Realtime 实时同步；同步按请求执行。
 - 忘记的同步密码无法找回；此时需重新输入已同步的密钥。
 - 不同步 Desktop 快捷键、Session 历史、附件与 OAuth grant 记录。
 - 当下载的补丁缺少本插件的行时，替换 profile 补丁可能停用本插件。

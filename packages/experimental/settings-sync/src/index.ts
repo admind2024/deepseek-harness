@@ -15,7 +15,7 @@ import { brandString } from '@deepseek-ai/dsh-brand'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { checkVerifier, createSalt, createVerifier, deriveKey, digest, open, seal, type KdfParams } from './crypto.ts'
 import { decide } from './decide.ts'
-import { applyItem, collectLocalItems, type ItemLocations } from './items.ts'
+import { applyItem, collectLocalItems, CREDENTIALS_PATH, mergeCredentialItems, type ItemLocations, type LocalItem } from './items.ts'
 import { serviceStatus, SupabaseClient, type SupabaseSession, type SupabaseSpec } from './supabase.ts'
 import type { SyncDeviceId, SyncMode, SyncReport, SyncStatus, SyncUserId } from './types.ts'
 
@@ -211,6 +211,21 @@ export default class SettingsSync extends TypertRemoteService {
     const remote = new Map((await this.client.listItems(session)).map(item => [item.path, item]))
     const report = { uploaded: [] as string[], downloaded: [] as string[], unchanged: [] as string[], conflicts: [] as string[] }
 
+    // Credential references merge by name instead of conflicting, so keys held by different devices accumulate.
+    const localCredentials = local.get(CREDENTIALS_PATH), remoteCredentials = remote.get(CREDENTIALS_PATH)
+    if (localCredentials !== undefined && remoteCredentials !== undefined && !remoteCredentials.deleted) {
+      const localChanged = digest(key, localCredentials.content) !== state.items[CREDENTIALS_PATH]?.sha256
+      const content = mergeCredentialItems(localCredentials.content, open(key, remoteCredentials.sealed, CREDENTIALS_PATH), localChanged)
+      if (!content.equals(localCredentials.content)) {
+        await applyItem(locations, this.ctx.credentials, CREDENTIALS_PATH, content)
+        report.downloaded.push(CREDENTIALS_PATH)
+      }
+      const merged: LocalItem = { ...localCredentials, content }
+      local.set(CREDENTIALS_PATH, merged)
+      // The merged bytes are this device's state; only a server row that differs from them still needs an upload.
+      state.items[CREDENTIALS_PATH] = { version: remoteCredentials.version, sha256: remoteCredentials.sha256 }
+    }
+
     for (const path of [...new Set([...local.keys(), ...remote.keys()])].sort()) {
       const localItem = local.get(path)
       const localSide = localItem === undefined ? undefined : { item: localItem, sha256: digest(key, localItem.content) }
@@ -236,7 +251,7 @@ export default class SettingsSync extends TypertRemoteService {
           break
         case 'adopt':
           state.items[path] = { version: action.remote.version, sha256: action.remote.sha256 }
-          report.unchanged.push(path)
+          if (!report.downloaded.includes(path)) report.unchanged.push(path)
           break
         case 'conflict':
           report.conflicts.push(path)

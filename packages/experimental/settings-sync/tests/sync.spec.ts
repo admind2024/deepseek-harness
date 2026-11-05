@@ -60,3 +60,21 @@ it('refreshes an expiring session and forgets local secrets on sign-out', async 
   expect(await a.sync.signOut()).toEqual({ signedIn: false, unlocked: false })
   expect(await a.sync.signOut()).toEqual({ signedIn: false, unlocked: false })
 })
+
+it('accumulates keys held by different devices instead of conflicting', async () => {
+  const a = await device(), b = await device()
+  for (const d of [a, b]) { await d.sync.signInWithPassword('me@example.com', 'login-pass'); await d.sync.unlock('sync-pass') }
+  await a.ctx.credentials.set(credentialRef('DEEPSEEK_API_KEY'), 'sk-a')
+  await a.ctx.credentials.set(credentialRef('SHARED_KEY'), 'old')
+  await a.sync.sync('merge')
+  await b.ctx.credentials.set(credentialRef('ANTHROPIC_API_KEY'), 'sk-ant')
+  await b.ctx.credentials.set(credentialRef('SHARED_KEY'), 'new')
+  expect(await b.sync.sync('merge')).toMatchObject({ uploaded: ['credentials/refs'], downloaded: ['credentials/refs'], conflicts: [] })
+  expect(await b.ctx.credentials.resolve(credentialRef('DEEPSEEK_API_KEY'))).toMatchObject({ value: 'sk-a' })
+  expect(await b.ctx.credentials.resolve(credentialRef('SHARED_KEY'))).toMatchObject({ value: 'new' })
+  expect(await a.sync.sync('merge')).toMatchObject({ downloaded: ['credentials/refs'], conflicts: [] })
+  expect(await a.ctx.credentials.resolve(credentialRef('ANTHROPIC_API_KEY'))).toMatchObject({ value: 'sk-ant' })
+  expect(await a.ctx.credentials.resolve(credentialRef('SHARED_KEY'))).toMatchObject({ value: 'new' })
+  expect(await a.sync.sync('merge')).toMatchObject({ uploaded: [], downloaded: [], conflicts: [], unchanged: ['credentials/refs'] })
+  expect(await b.sync.sync('merge')).toMatchObject({ uploaded: [], downloaded: [], conflicts: [] })
+})

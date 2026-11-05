@@ -66,7 +66,6 @@ kind: "package-group"
 | [`api-speech-to-text`](api-speech-to-text/README.zh.md) | 带认证的临时转写 Remote | `ctx.speechController` |
 | [`settings-sync`](settings-sync/README.zh.md) | 通过 Supabase 账户端到端加密同步设置与 API 密钥 | `ctx.settingsSync` |
 | [`client-ui-settings-sync`](client-ui-settings-sync/README.zh.md) | 设置同步页面 | — |
-| [`settings-sync-bundle`](settings-sync-bundle/README.zh.md) | 默认关闭的设置同步组合 | — |
 | [`client-ui-voice-input`](client-ui-voice-input/README.zh.md) | 麦克风录音与版本检查后的草稿插入 | — |
 | [`plugin-market-bundle`](plugin-market-bundle/README.zh.md) | 默认禁用的可选自定义插件索引：索引服务和「发现」标签页 | — |
 | [`liveshare`](liveshare/README.zh.md) | 可选 LiveShare host bundle：通过 Relay 以 `view` 或 `write` 档分享会话，派生与附件上传为独立开关 | 注入 `connection`；通过宿主 Web 资源提供查看页 |

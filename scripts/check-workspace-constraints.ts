@@ -9,14 +9,7 @@ import { existsSync, globSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { load as loadYaml } from 'js-yaml'
-import {
-  isPublicExperimentalPackageDirectory,
-  isExperimentalPackageName,
-  hasExperimentalPackageReference,
-  EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS,
-  EXPERIMENTAL_PACKAGE_NAME_PREFIX,
-  PRIVATE_EXPERIMENTAL_PACKAGE_DIRECTORIES,
-} from './experimental-package-policy.ts'
+import { DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES, EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS, EXPERIMENTAL_PACKAGE_NAME_PREFIX, PRIVATE_EXPERIMENTAL_PACKAGE_DIRECTORIES, hasExperimentalPackageReference, isExperimentalPackageName, isPublicExperimentalPackageDirectory } from './experimental-package-policy.ts'
 import { hasTypertRemoteNavigation, isForbiddenPublicationFile } from './publication-payload.ts'
 import type { DshBundleManifest } from '../packages/util/package-manifest/src/types.ts'
 import { detailPath } from '../packages/util/plugin-detail/src/document.ts'
@@ -670,6 +663,7 @@ export function checkExperimentalDependencyIsolation(
           || /^(?:npm:|workspace:)/.test(range) && hasExperimentalPackageReference(range)
         if (!experimental) continue
         if (section === 'dependencies' && offered.has(name)) continue
+        if (section === 'dependencies' && Object.hasOwn(DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES, name)) continue
         errors.push(`${manifest.name ?? dir}: ${section}.${name} must not reference an experimental package`)
       }
     }

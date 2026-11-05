@@ -27,6 +27,15 @@ export const EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS: Readonly<Record<string, strin
   'packages/experimental/personalized-recommendations': '@deepseek-ai/dsh-personalized-recommendations',
 } satisfies Record<`packages/experimental/${string}`, `@deepseek-ai/dsh-${string}`>
 
+/**
+ * Experimental packages the default product composes anyway, each with its reason. The isolation and workspace
+ * constraint gates admit exactly these names.
+ */
+export const DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES: Readonly<Record<string, string>> = {
+  '@deepseek-ai/dsh-experimental-settings-sync': 'first-run settings restore needs the sync Remote on every device',
+  '@deepseek-ai/dsh-experimental-client-ui-settings-sync': 'first-run settings restore step and settings page',
+}
+
 /** npm namespace for experimental packages without retained-name exceptions. */
 export const EXPERIMENTAL_PACKAGE_NAME_PREFIX = '@deepseek-ai/dsh-experimental-'
 const retainedNames = new Set(Object.values(EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS))

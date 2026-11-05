@@ -25,7 +25,7 @@ Adds the **Settings sync** page to Settings. It drives the `settingsSync` Remote
 <a id="use-this-package"></a>
 ## Use this package
 
-Enable it together with `@deepseek-ai/dsh-experimental-settings-sync`, normally through `@deepseek-ai/dsh-experimental-settings-sync-bundle`. The page registers in the `settings.section` slot with id `settings-sync`.
+The Web application bundle composes it with `@deepseek-ai/dsh-experimental-settings-sync`. The page registers in the `settings.section` slot with id `settings-sync`, and a first-run step registers in `settings.onboarding` with id `settings-sync` at order -50, before the DeepSeek credential step. The step signs in, unlocks, and runs a `merge` pass; conflicts ask which side to keep. It finishes without showing anything when the device already syncs or when the user skipped it before, which is remembered in browser storage.
 
 -----
 
@@ -61,7 +61,7 @@ No direct effect.
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- Sync runs only when the user presses **Sync now**; there is no background or Realtime sync.
+- After first run, sync runs only when the user presses **Sync now**; there is no background or Realtime sync.
 - Conflicts are resolved for all conflicting items at once.
 
 -----

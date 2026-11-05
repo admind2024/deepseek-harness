@@ -45,7 +45,7 @@ The Supabase session and derived key are `grant` records `settings-sync/session`
 
 Each pass compares local digests, server versions, and `<DSH_HOME>/settings-sync/state.json`. A change on one side moves to the other side; equal content adopts the server version; a change on both sides is reported under `merge`, uploaded under `prefer-local`, and downloaded under `prefer-remote`. Uploads pass the last seen version, so a concurrent writer causes a conflict rather than an overwrite. Operations on one Host run serially.
 
-Downloaded files are written atomically with mode `0600`; credential references go through `ctx.credentials.set`. Only references the credential file stores are uploaded; environment and `.env` values stay local. Items of another profile name are left on the server.
+Downloaded files are written atomically with mode `0600`; credential references go through `ctx.credentials.set`. Only references the credential file stores are uploaded; environment and `.env` values stay local. Items of another profile name are left on the server. Credential references merge by name instead of conflicting: when this device changed them since its last pass its values win for shared names, otherwise the server's values win, and names present on only one side are kept. A removed reference is therefore not removed on other devices.
 
 </details>
 
@@ -71,7 +71,7 @@ No direct effect.
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- No settings UI, optional bundle, or live Realtime sync yet; the Remote is called directly.
+- No live Realtime sync; passes run on request.
 - A forgotten sync password cannot be recovered; synced keys must then be entered again.
 - Desktop keybindings, Session history, attachments, and OAuth grant records are not synced.
 - Replacing the profile patch can disable this plugin when the downloaded patch omits its row.

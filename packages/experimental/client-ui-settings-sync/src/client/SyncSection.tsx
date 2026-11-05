@@ -1,9 +1,10 @@
 /** Settings page for sync sign-in, the sync password, and manual sync passes. */
-import { useEffect, useState, type FormEvent } from 'react'
-import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useEffect } from 'react'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SyncController, SyncViewState } from './controller.ts'
+import { SignInSteps } from './SyncSteps.tsx'
 import css from './SyncSection.module.css'
 
 /** State and actions supplied by the plugin. */
@@ -14,10 +15,6 @@ export interface SyncInjected {
 
 type Props = PropsRuntime<'settings.section'> & InjectFace<SyncInjected> & PropsLocale<'settingsSync'>
 
-function submit(action: () => void) {
-  return (event: FormEvent) => { event.preventDefault(); action() }
-}
-
 /**
  * Render the step that matches the Host sync status.
  * @param props - sync state hook, controller and localized copy.
@@ -25,11 +22,7 @@ function submit(action: () => void) {
  */
 export function SyncSection({ useSync, controller, t }: Props) {
   const state = useSync(value => value)
-  const [email, setEmail] = useState('')
-  const [secret, setSecret] = useState('')
-  const [code, setCode] = useState('')
   useEffect(() => { void controller.refresh() }, [controller])
-  useEffect(() => { setSecret('') }, [state.phase])
 
   const report = state.report
   return <section className={css.section} aria-label={t('title')}>
@@ -40,41 +33,7 @@ export function SyncSection({ useSync, controller, t }: Props) {
       {state.error !== undefined && <Button variant="outline" disabled={state.busy} onClick={() => { void controller.refresh() }}>{t('retry')}</Button>}
     </div>}
 
-    {state.phase === 'signed-out' && <form className={css.card} onSubmit={submit(() => { void controller.signIn(email, secret) })}>
-      <label className={css.field}>{t('email')}
-        <Input type="email" autoComplete="username" value={email} onChange={(event) => { setEmail(event.target.value) }} required />
-      </label>
-      <label className={css.field}>{t('password')}
-        <Input type="password" autoComplete="current-password" value={secret} onChange={(event) => { setSecret(event.target.value) }} />
-      </label>
-      <div className={css.actions}>
-        <Button type="submit" variant="primary" disabled={state.busy || email === '' || secret === ''}>{t('signIn')}</Button>
-        <Button variant="outline" disabled={state.busy || email === ''} onClick={() => { void controller.requestCode(email) }}>{t('sendCode')}</Button>
-      </div>
-    </form>}
-
-    {state.phase === 'code-sent' && <form className={css.card} onSubmit={submit(() => { void controller.verifyCode(code) })}>
-      <p className={css.note} role="status">{t('codeSent', { email: state.email })}</p>
-      <label className={css.field}>{t('code')}
-        <Input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => { setCode(event.target.value) }} required />
-      </label>
-      <div className={css.actions}>
-        <Button type="submit" variant="primary" disabled={state.busy || code === ''}>{t('verify')}</Button>
-        <Button variant="ghost" disabled={state.busy} onClick={() => { controller.cancelCode() }}>{t('back')}</Button>
-      </div>
-    </form>}
-
-    {state.phase === 'locked' && <form className={css.card} onSubmit={submit(() => { void controller.unlock(secret) })}>
-      <p className={css.note}>{t('signedInAs', { email: state.email })}</p>
-      <p className={css.note}>{t('lockedDescription')}</p>
-      <label className={css.field}>{t('syncPassword')}
-        <Input type="password" autoComplete="new-password" value={secret} onChange={(event) => { setSecret(event.target.value) }} required />
-      </label>
-      <div className={css.actions}>
-        <Button type="submit" variant="primary" disabled={state.busy || secret === ''}>{t('unlock')}</Button>
-        <Button variant="ghost" disabled={state.busy} onClick={() => { void controller.signOut() }}>{t('signOut')}</Button>
-      </div>
-    </form>}
+    <SignInSteps state={state} controller={controller} t={t} />
 
     {state.phase === 'ready' && <div className={css.card}>
       <p className={css.note}>{t('signedInAs', { email: state.email })}</p>

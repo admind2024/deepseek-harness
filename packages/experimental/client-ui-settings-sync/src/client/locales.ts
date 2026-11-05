@@ -1,5 +1,9 @@
 /** Copy for the settings sync page. */
 export const en = {
+  onboardingTitle: 'Sign in to your sync account',
+  onboardingDescription: 'Sign in with your own account to restore your settings and API keys on this device. Skip to set up the app without sync.',
+  restoring: 'Restoring your settings…',
+  skip: 'Skip',
   nav: 'Settings sync',
   title: 'Settings sync',
   description: 'Sync your settings and API keys to your other devices. Everything is encrypted on this device with your sync password before it is uploaded.',
@@ -37,6 +41,10 @@ export type SyncKey = keyof typeof en
 
 /** Chinese copy. */
 export const zh = {
+  onboardingTitle: '登录同步账户',
+  onboardingDescription: '使用你自己的账户登录，在本设备上恢复设置与 API 密钥。跳过则不使用同步来设置应用。',
+  restoring: '正在恢复你的设置…',
+  skip: '跳过',
   nav: '设置同步',
   title: '设置同步',
   description: '将设置与 API 密钥同步到你的其他设备。所有内容在上传前都会在本设备上用你的同步密码加密。',
@@ -71,6 +79,10 @@ export const zh = {
 
 /** Japanese copy. */
 export const ja = {
+  onboardingTitle: '同期アカウントにサインイン',
+  onboardingDescription: '自分のアカウントでサインインして、このデバイスに設定と API キーを復元します。同期なしで設定する場合はスキップしてください。',
+  restoring: '設定を復元しています…',
+  skip: 'スキップ',
   nav: '設定の同期',
   title: '設定の同期',
   description: '設定と API キーを他のデバイスに同期します。すべての内容はアップロード前に、このデバイス上で同期パスワードにより暗号化されます。',
@@ -105,6 +117,10 @@ export const ja = {
 
 /** Spanish copy. */
 export const es = {
+  onboardingTitle: 'Inicia sesión en tu cuenta de sincronización',
+  onboardingDescription: 'Inicia sesión con tu propia cuenta para restaurar tus ajustes y claves de API en este dispositivo. Omite para configurar la aplicación sin sincronización.',
+  restoring: 'Restaurando tus ajustes…',
+  skip: 'Omitir',
   nav: 'Sincronización de ajustes',
   title: 'Sincronización de ajustes',
   description: 'Sincroniza tus ajustes y claves de API con tus otros dispositivos. Todo se cifra en este dispositivo con tu contraseña de sincronización antes de subirse.',
@@ -139,6 +155,10 @@ export const es = {
 
 /** French copy. */
 export const fr = {
+  onboardingTitle: 'Connectez-vous à votre compte de synchronisation',
+  onboardingDescription: 'Connectez-vous avec votre propre compte pour restaurer vos paramètres et clés d’API sur cet appareil. Ignorez pour configurer l’application sans synchronisation.',
+  restoring: 'Restauration de vos paramètres…',
+  skip: 'Ignorer',
   nav: 'Synchronisation des paramètres',
   title: 'Synchronisation des paramètres',
   description: 'Synchronisez vos paramètres et clés d’API avec vos autres appareils. Tout est chiffré sur cet appareil avec votre mot de passe de synchronisation avant l’envoi.',
@@ -173,6 +193,10 @@ export const fr = {
 
 /** German copy. */
 export const de = {
+  onboardingTitle: 'Bei deinem Synchronisierungskonto anmelden',
+  onboardingDescription: 'Melde dich mit deinem eigenen Konto an, um Einstellungen und API-Schlüssel auf diesem Gerät wiederherzustellen. Überspringe, um die App ohne Synchronisierung einzurichten.',
+  restoring: 'Einstellungen werden wiederhergestellt…',
+  skip: 'Überspringen',
   nav: 'Einstellungssynchronisierung',
   title: 'Einstellungssynchronisierung',
   description: 'Synchronisiert Einstellungen und API-Schlüssel mit deinen anderen Geräten. Alles wird vor dem Hochladen auf diesem Gerät mit deinem Synchronisierungspasswort verschlüsselt.',
@@ -207,6 +231,10 @@ export const de = {
 
 /** Russian copy. */
 export const ru = {
+  onboardingTitle: 'Войдите в учётную запись синхронизации',
+  onboardingDescription: 'Войдите в свою учётную запись, чтобы восстановить настройки и ключи API на этом устройстве. Пропустите, чтобы настроить приложение без синхронизации.',
+  restoring: 'Восстановление настроек…',
+  skip: 'Пропустить',
   nav: 'Синхронизация настроек',
   title: 'Синхронизация настроек',
   description: 'Синхронизирует настройки и ключи API с другими вашими устройствами. Перед отправкой всё шифруется на этом устройстве паролем синхронизации.',
@@ -241,6 +269,10 @@ export const ru = {
 
 /** Portuguese copy. */
 export const pt = {
+  onboardingTitle: 'Entre na sua conta de sincronização',
+  onboardingDescription: 'Entre com sua própria conta para restaurar suas configurações e chaves de API neste dispositivo. Pule para configurar o app sem sincronização.',
+  restoring: 'Restaurando suas configurações…',
+  skip: 'Pular',
   nav: 'Sincronização de configurações',
   title: 'Sincronização de configurações',
   description: 'Sincroniza suas configurações e chaves de API com seus outros dispositivos. Tudo é criptografado neste dispositivo com sua senha de sincronização antes do envio.',

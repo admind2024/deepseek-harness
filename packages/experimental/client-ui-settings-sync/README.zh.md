@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用此包
 
-与 `@deepseek-ai/dsh-experimental-settings-sync` 一起启用，通常通过 `@deepseek-ai/dsh-experimental-settings-sync-bundle`。页面以 id `settings-sync` 注册到 `settings.section` 插槽。
+Web 应用 bundle 将其与 `@deepseek-ai/dsh-experimental-settings-sync` 组合。页面以 id `settings-sync` 注册到 `settings.section` 插槽；首次运行步骤以 id `settings-sync`、顺序 -50 注册到 `settings.onboarding`，位于 DeepSeek 凭据步骤之前。该步骤完成登录与解锁并执行一次 `merge` 同步；出现冲突时询问保留哪一侧。当设备已在同步或用户此前跳过时，它不显示任何内容直接结束，跳过记录保存在浏览器存储中。
 
 -----
 
@@ -61,7 +61,7 @@ kind: "package-reference"
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- 只有在用户点击 **立即同步** 时才会同步；没有后台或 Realtime 同步。
+- 首次运行之后，只有在用户点击 **立即同步** 时才会同步；没有后台或 Realtime 同步。
 - 冲突一次性对所有冲突条目统一处理。
 
 -----

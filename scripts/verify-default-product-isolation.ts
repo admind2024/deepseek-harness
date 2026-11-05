@@ -20,7 +20,7 @@ import {
   collectRuntimeSourceSpecifiers,
 } from './verify-client-packages.ts'
 
-import { isExperimentalPackageName } from './experimental-package-policy.ts'
+import { DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES, isExperimentalPackageName } from './experimental-package-policy.ts'
 // The independently published entry package owns platform-engine dependencies.
 const EXTERNAL_KIT_PACKAGES = new Set(['@deepseek-ai/libreoffice-kit'])
 const PROFILE_SOURCE = 'packages/util/official-bundles/src/bundles.ts'
@@ -107,8 +107,9 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
   const sources = new Set<string>()
   const configs = new Set<string>()
   let webPluginCount = 0
-  const isExperimental = (pkg: Package): boolean => isExperimentalPackageName(pkg.manifest.name)
-    || display(pkg.directory).startsWith('packages/experimental/')
+  const admitted = (name: string): boolean => Object.hasOwn(DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES, name)
+  const isExperimental = (pkg: Package): boolean => !admitted(pkg.manifest.name) && (isExperimentalPackageName(pkg.manifest.name)
+    || display(pkg.directory).startsWith('packages/experimental/'))
   const add = (pkg: Package, origin: string): void => {
     if (isExperimental(pkg)) {
       failures.push(`${origin} -> ${pkg.manifest.name}: default product must not include experimental packages`)
@@ -136,7 +137,7 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
       return
     }
     const packageName = barePackageName(name)
-    if (isExperimentalPackageName(packageName)) {
+    if (isExperimentalPackageName(packageName) && !admitted(packageName)) {
       failures.push(`${origin} -> ${name}: default product must not include experimental packages`)
       return
     }

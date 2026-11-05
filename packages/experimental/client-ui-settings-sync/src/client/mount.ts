@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-experimental-settings-sync/remote'
 import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import { SyncController } from './controller.ts'
 import { de, en, es, fr, ja, pt, ru, zh, type SyncKey } from './locales.ts'
+import { SyncOnboarding } from './SyncOnboarding.tsx'
 import { SyncSection, type SyncInjected } from './SyncSection.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -41,4 +42,8 @@ function registerPage(ctx: Context): void {
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'settings-sync', order: 60, label: () => t('nav'), locale: 'settingsSync', inject: face,
   }, SyncSection))
+  // Before the DeepSeek credential step (order 0): restored keys let that step complete without asking.
+  ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
+    name: 'settings.onboarding', id: 'settings-sync', order: -50, locale: 'settingsSync', inject: face,
+  }, SyncOnboarding))
 }

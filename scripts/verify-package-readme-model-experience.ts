@@ -59,7 +59,6 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/experimental/api-speech-to-text': { kind: 'none', reason: 'Transports audio and preparation state; ordinary user submission owns model-visible text.' },
   'packages/experimental/settings-sync': { kind: 'none', reason: 'Copies files and credentials between devices; the plugins those files configure own model-visible input.' },
   'packages/experimental/client-ui-settings-sync': { kind: 'none', reason: 'Renders sync sign-in and status; the settings-sync Remote owns every file and credential change.' },
-  'packages/experimental/settings-sync-bundle': { kind: 'none', reason: 'Composes the settings-sync Remote and its page; neither reaches model requests.' },
   'packages/experimental/speech-to-text-sensevoice': { kind: 'none', reason: 'Local recognition returns transient text without modifying model context.' },
   'packages/experimental/client-ui-voice-input': { kind: 'none', reason: 'Inserts reviewable text into the unsent draft without submitting to the Agent.' },
   'packages/experimental/liveshare': { kind: 'indirect', reason: 'The host drives viewer prompts into the shared Session, so model requests follow the viewer input the host forwards.' },

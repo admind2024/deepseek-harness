@@ -93,10 +93,7 @@ export async function applyItem(
   locations: ItemLocations, credentials: CredentialProvider, path: string, content: Buffer,
 ): Promise<boolean> {
   if (path === CREDENTIALS_PATH) {
-    const refs: unknown = JSON.parse(content.toString('utf8'))
-    if (typeof refs !== 'object' || refs === null) throw new Error('settings-sync: credential item is not an object')
-    for (const [name, value] of Object.entries(refs)) {
-      if (!isCredentialRefName(name) || typeof value !== 'string' || value === '') throw new Error(`settings-sync: invalid credential reference ${name}`)
+    for (const [name, value] of Object.entries(parseRefs(content))) {
       const ref = credentialRef(name)
       if ((await credentials.resolve(ref))?.value !== value) await credentials.set(ref, value)
     }
@@ -106,4 +103,28 @@ export async function applyItem(
   if (file === undefined) return false
   await writeFileAtomic(file.filename, content, { mode: 0o600, dirMode: 0o700 })
   return true
+}
+
+function parseRefs(content: Buffer): Record<string, string> {
+  const refs: unknown = JSON.parse(content.toString('utf8'))
+  if (typeof refs !== 'object' || refs === null) throw new Error('settings-sync: credential item is not an object')
+  const parsed: Record<string, string> = {}
+  for (const [name, value] of Object.entries(refs)) {
+    if (!isCredentialRefName(name) || typeof value !== 'string' || value === '') throw new Error(`settings-sync: invalid credential reference ${name}`)
+    parsed[name] = value
+  }
+  return parsed
+}
+
+/**
+ * Union two credential items so a pass never drops a key that only one device holds.
+ * @param local - this device's credential item.
+ * @param remote - decrypted server credential item.
+ * @param localWins - whether this device's value wins for a name present on both sides.
+ * @returns canonical item bytes with names in sorted order.
+ */
+export function mergeCredentialItems(local: Buffer, remote: Buffer, localWins: boolean): Buffer {
+  const [low, high] = localWins ? [parseRefs(remote), parseRefs(local)] : [parseRefs(local), parseRefs(remote)]
+  const merged = { ...low, ...high }
+  return Buffer.from(JSON.stringify(Object.fromEntries(Object.keys(merged).sort().map(name => [name, merged[name]]))), 'utf8')
 }
