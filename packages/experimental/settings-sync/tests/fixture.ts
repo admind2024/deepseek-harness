@@ -11,6 +11,8 @@ import SettingsSync from '../src/index.ts'
 export interface Row { path: string; kind: string; ciphertext: string; nonce: string; sha256: string; version: number; deleted: boolean }
 
 /** In-memory stand-in for the Supabase endpoints the client calls, enforcing per-user ownership like row-level security. */
+type Intercept = (method: string, path: string, body: Record<string, unknown> | undefined) => Response | Promise<Response> | undefined
+
 export class FakeSupabase {
   envelopes = new Map<string, object>()
   items = new Map<string, Map<string, Row>>()
@@ -18,7 +20,7 @@ export class FakeSupabase {
   refreshes = 0
   expiresIn = 3600
   /** Optional override consulted before routing; return a Response to replace the normal answer. */
-  intercept?: (method: string, path: string, body: Record<string, unknown> | undefined) => Response | Promise<Response> | undefined
+  intercept: Intercept | undefined = undefined
 
   handle = async (input: URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(input)
@@ -87,6 +89,8 @@ export async function device(profileName = 'web') {
   await ctx.plugin(LocalCredentialProvider, { path: join(home, '.credentials.yaml'), watch: false })
   const patchPath = join(home, 'profiles', profileName, 'cordis.patch.yml')
   ctx.provide('profileContext', { name: profileName, home, dir: join(home, 'profiles', profileName), patchPath } as Partial<ProfileContext> as ProfileContext)
-  const sync = new SettingsSync(ctx, SettingsSync.Config({ supabaseUrl: 'https://example.supabase.co', supabaseKey: 'sb_publishable_test', scryptCostLog2: 14 }))
+  const sync = new SettingsSync(ctx, SettingsSync.Config({
+    supabaseUrl: 'https://example.supabase.co', supabaseKey: 'sb_publishable_test', requestTimeoutMs: 30_000, scryptCostLog2: 14,
+  }))
   return { ctx, home, patchPath, sync }
 }
