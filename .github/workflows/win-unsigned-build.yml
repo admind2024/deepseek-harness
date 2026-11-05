@@ -1,0 +1,38 @@
+name: Windows unsigned build
+on:
+  push:
+    branches: [win-unsigned-build, win-sync-build]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 240
+    steps:
+      - run: git config --system core.longpaths true
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v5.0.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '24'
+      - run: pnpm install --frozen-lockfile
+      - name: Write Windows package settings
+        shell: pwsh
+        run: |
+          @(
+            'DSH_DESKTOP_APP_ID=com.deepseek.harness'
+            'DSH_DESKTOP_AUTO_UPDATE_ENV=production'
+            'DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN=https://dsh-download.vercel.app'
+          ) | Set-Content -Encoding utf8 apps/desktop/.env.windows
+      - run: pnpm run package:desktop:win:x64:unsigned --check
+      - run: pnpm run package:desktop:win:x64:unsigned
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: windows-x64-unsigned
+          path: apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*.exe
+          if-no-files-found: error
+      - if: failure()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: packaging-logs
+          path: apps/desktop/.desktop-build/packaging-runs/
+          if-no-files-found: ignore
