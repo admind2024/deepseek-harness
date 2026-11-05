@@ -81,14 +81,18 @@ export default class SettingsSync extends TypertRemoteService {
   }
 
   /**
+   * Resolve the Supabase connection from configuration.
    * @param config - validated plugin configuration.
    * @returns explicit Supabase connection settings.
    */
-  resolve(config: Config): SupabaseSpec {
+  private resolve(config: Config): SupabaseSpec {
     return { url: config.supabaseUrl, key: config.supabaseKey, timeoutMs: config.requestTimeoutMs }
   }
 
-  /** @returns sign-in and key state of this device. */
+  /**
+   * Report sign-in and key state.
+   * @returns sign-in and key state of this device.
+   */
   @Remote
   async status(): Promise<SyncStatus> {
     const session = await this.storedSession()

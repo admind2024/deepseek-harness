@@ -367,6 +367,65 @@ abstract getDeviceIdentity(): Promise<{ deviceId?: string; userId?: AccountUserI
 
 Source: [`packages/credentials/deepseek-account/src/index.ts`](../../packages/credentials/deepseek-account/src/index.ts)
 
+<a id="ctxsettingssync--settingssync"></a>
+
+### `ctx.settingsSync` — `SettingsSync`
+
+Settings sync Remote; every operation runs serialized so two passes never interleave writes.
+
+```ts cordis-catalog
+/**
+ * Report sign-in and key state.
+ * @returns sign-in and key state of this device.
+ */
+@Remote async status(): Promise<SyncStatus>
+
+/**
+ * Sign in with the Supabase account password.
+ * @param email - account email.
+ * @param password - Supabase Auth password, not the sync password.
+ * @returns updated status.
+ */
+@Remote signInWithPassword(email: string, password: string): Promise<SyncStatus>
+
+/**
+ * Email a one-time sign-in code.
+ * @param email - account email.
+ * @returns after Supabase accepted the request.
+ */
+@Remote requestCode(email: string): Promise<void>
+
+/**
+ * Sign in with an emailed one-time code.
+ * @param email - account email.
+ * @param code - code from the email.
+ * @returns updated status.
+ */
+@Remote verifyCode(email: string, code: string): Promise<SyncStatus>
+
+/**
+ * Sign out and forget the session, item key, and sync state on this device. Synced data stays in the account.
+ * @returns updated status.
+ */
+@Remote signOut(): Promise<SyncStatus>
+
+/**
+ * Derive the item key from the sync password and store it on this device. The first device creates the key envelope.
+ * @param password - sync password; never sent to Supabase.
+ * @returns updated status.
+ */
+@Remote unlock(password: string): Promise<SyncStatus>
+
+/**
+ * Upload local changes and download remote changes.
+ * @param mode - resolution for items changed on both sides.
+ * @returns paths grouped by action.
+ */
+@Remote sync(mode: SyncMode): Promise<SyncReport>
+```
+
+Source: [`packages/experimental/settings-sync/src/index.ts`](../../packages/experimental/settings-sync/src/index.ts)
+
 <a id="authorization-events"></a>
 
 ### `authorization/*` events

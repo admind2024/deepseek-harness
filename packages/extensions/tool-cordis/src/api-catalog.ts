@@ -3372,6 +3372,55 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'settingsSync',
+    summary: 'Settings sync Remote; every operation runs serialized so two passes never interleave writes.',
+    description: 'Settings sync Remote; every operation runs serialized so two passes never interleave writes.',
+    methods: [
+      {
+        signature: '@Remote async status(): Promise<SyncStatus>',
+        description: 'Report sign-in and key state.',
+        parameters: [],
+        returns: 'sign-in and key state of this device.',
+      },
+      {
+        signature: '@Remote signInWithPassword(email: string, password: string): Promise<SyncStatus>',
+        description: 'Sign in with the Supabase account password.',
+        parameters: [{ name: 'email', description: 'account email.' }, { name: 'password', description: 'Supabase Auth password, not the sync password.' }],
+        returns: 'updated status.',
+      },
+      {
+        signature: '@Remote requestCode(email: string): Promise<void>',
+        description: 'Email a one-time sign-in code.',
+        parameters: [{ name: 'email', description: 'account email.' }],
+        returns: 'after Supabase accepted the request.',
+      },
+      {
+        signature: '@Remote verifyCode(email: string, code: string): Promise<SyncStatus>',
+        description: 'Sign in with an emailed one-time code.',
+        parameters: [{ name: 'email', description: 'account email.' }, { name: 'code', description: 'code from the email.' }],
+        returns: 'updated status.',
+      },
+      {
+        signature: '@Remote signOut(): Promise<SyncStatus>',
+        description: 'Sign out and forget the session, item key, and sync state on this device. Synced data stays in the account.',
+        parameters: [],
+        returns: 'updated status.',
+      },
+      {
+        signature: '@Remote unlock(password: string): Promise<SyncStatus>',
+        description: 'Derive the item key from the sync password and store it on this device. The first device creates the key envelope.',
+        parameters: [{ name: 'password', description: 'sync password; never sent to Supabase.' }],
+        returns: 'updated status.',
+      },
+      {
+        signature: '@Remote sync(mode: SyncMode): Promise<SyncReport>',
+        description: 'Upload local changes and download remote changes.',
+        parameters: [{ name: 'mode', description: 'resolution for items changed on both sides.' }],
+        returns: 'paths grouped by action.',
+      },
+    ],
+  },
+  {
     key: 'shell',
     summary: 'Abstract bash execution service.',
     description: 'Abstract bash execution service. Subclass, implement the abstract methods, and load the subclass as a plugin — it registers as `ctx.shell` (one implementation per context; loading a second throws, which is cordis\' standard duplicate-service behavior).\n\nexecute resolves with the process handle after preparation. "Foreground" is a property of what the caller awaits, not of the spawn — a caller that awaits ShellExecution.result ran the command in the foreground; one that keeps the handle ran it in the background. A caller that waits only for a while runs the command under `onExpiry: \'none\'` and bounds its own wait; the handle stays valid after the caller stops waiting.\n\nImplementations must honor these semantics:\n\n- ShellExecution.result rejects only for infrastructure failures. Nonzero exits, timeout kills, and abort kills resolve with a descriptive result: first-cause `timedOut`/`aborted`, the spec\'s `timeoutMs` echoed.\n- The handle is published after preparation. `done` settles at process close and never rejects; spawn failures settle as `killed` with the error on the read path, while `result()` carries the same failure as its rejection.\n- `onExpiry: \'none\'` arms no deadline; `\'kill\'` kills at expiry. Expiry during preparation returns a settled timed-out handle without output.\n- ShellProcess.readOutput is incremental: consecutive reads never repeat output. Lossy reads report truncation and available spill files.\n- A still-running process is stopped and awaited when its owning composition tears down. With the subprocess seam that boundary is `ctx.subprocess` disposal, so a process survives an executor-only reload.',
@@ -9318,6 +9367,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SurfaceSnapshot',
     declaration: 'export interface SurfaceSnapshot {\n    readonly generation: number;\n    readonly tree: readonly SerializedNode[] | null;\n}',
+  },
+  {
+    name: 'SyncMode',
+    declaration: 'export type SyncMode = \'merge\' | \'prefer-local\' | \'prefer-remote\';',
+  },
+  {
+    name: 'SyncReport',
+    declaration: 'export interface SyncReport {\n    readonly uploaded: readonly string[];\n    readonly downloaded: readonly string[];\n    readonly unchanged: readonly string[];\n    readonly conflicts: readonly string[];\n}',
+  },
+  {
+    name: 'SyncStatus',
+    declaration: 'export interface SyncStatus {\n    readonly signedIn: boolean;\n    readonly email?: string;\n    readonly unlocked: boolean;\n}',
   },
   {
     name: 'SystemMessage',

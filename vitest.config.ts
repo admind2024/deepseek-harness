@@ -358,6 +358,7 @@ export default defineConfig({
         // Built Web replays cover the generated Remote wiring of the card entries; their mount modules are source-covered.
         'packages/experimental/client-ui-action-cards/src/client/index.ts',
         'packages/experimental/client-ui-plugin-recommendations/src/client/index.ts',
+        'packages/experimental/client-ui-settings-sync/src/client/index.ts',
         // The permission entry binds generated Remote code; cua-permissions.e2e.ts covers
         // its built entry, while source tests exercise mountCuaPermissions and its UI.
         'packages/experimental/cua/src/client/index.ts',

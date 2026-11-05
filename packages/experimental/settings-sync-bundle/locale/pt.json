@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Sincronização de configurações",
+    "description": "Sincroniza configurações e chaves de API entre dispositivos pela sua conta, criptografadas com uma senha de sincronização."
+  }
+}

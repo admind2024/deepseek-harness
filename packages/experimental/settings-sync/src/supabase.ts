@@ -144,6 +144,7 @@ export class SupabaseClient {
   }
 
   /**
+   * Read the account's key envelope.
    * @param session - signed-in session.
    * @returns the account's key envelope, or undefined before a sync password was set.
    */
@@ -183,6 +184,7 @@ export class SupabaseClient {
   }
 
   /**
+   * List the account's live item rows.
    * @param session - signed-in session.
    * @returns every item row of the signed-in account.
    */

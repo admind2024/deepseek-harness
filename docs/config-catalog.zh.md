@@ -1326,6 +1326,29 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-settings-sync -->
+<a id="deepseek-aidsh-experimental-settings-sync"></a>
+
+## `@deepseek-ai/dsh-experimental-settings-sync`
+
+- `inject`: `credentials` · `profileContext` · `typert`
+- `source`: [`packages/experimental/settings-sync/src/index.ts:32`](../packages/experimental/settings-sync/src/index.ts)
+
+```ts config-catalog
+/** Deployment settings for the Supabase project and key derivation cost. */
+export interface Config {
+  /** HTTPS origin of the Supabase project. */
+  supabaseUrl: string
+  /** Publishable (anon) key of that project. */
+  supabaseKey: string
+  /** Per-request timeout in milliseconds. */
+  requestTimeoutMs: number
+  /** scrypt cost exponent used when a new key envelope is created; existing envelopes keep their stored cost. */
+  scryptCostLog2: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-settings-sync -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-speech-to-text -->
 <a id="deepseek-aidsh-experimental-speech-to-text"></a>
 
@@ -4918,6 +4941,7 @@ export interface Config {
 | `@deepseek-ai/dsh-experimental-auto-review` | `approval` · `llm` · `permissionPresets` · `sessions` · `tools` · `workingDirectory` | [`packages/experimental/auto-review/src/index.ts`](../packages/experimental/auto-review/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-agent-team` | — | [`packages/experimental/client-ui-agent-team/src/index.ts`](../packages/experimental/client-ui-agent-team/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-claude-code-mods` | — | [`packages/experimental/client-ui-claude-code-mods/src/index.ts`](../packages/experimental/client-ui-claude-code-mods/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-client-ui-settings-sync` | — | [`packages/experimental/client-ui-settings-sync/src/index.ts`](../packages/experimental/client-ui-settings-sync/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-stats` | — | [`packages/experimental/client-ui-stats/src/index.ts`](../packages/experimental/client-ui-stats/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | — | [`packages/experimental/client-ui-voice-input/src/index.ts`](../packages/experimental/client-ui-voice-input/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | `computerUse` · `tools` · `systemPrompt` | [`packages/experimental/computer-use-cua-driver-native/src/index.ts`](../packages/experimental/computer-use-cua-driver-native/src/index.ts) |
@@ -5020,6 +5044,7 @@ export interface Config {
 | `@deepseek-ai/dsh-experimental-ralph-bundle` | — | [`packages/experimental/ralph-bundle/src/index.ts`](../packages/experimental/ralph-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-session-search` | — | [`packages/experimental/session-search/src/index.ts`](../packages/experimental/session-search/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-session-titles-bundle` | — | [`packages/experimental/session-titles-bundle/src/index.ts`](../packages/experimental/session-titles-bundle/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-settings-sync-bundle` | — | [`packages/experimental/settings-sync-bundle/src/index.ts`](../packages/experimental/settings-sync-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-terminal-bundle` | — | [`packages/experimental/terminal-bundle/src/index.ts`](../packages/experimental/terminal-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-voice-input-bundle` | — | [`packages/experimental/voice-input-bundle/src/index.ts`](../packages/experimental/voice-input-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-webworker-packer` | — | [`packages/experimental/webworker-packer/src/index.ts`](../packages/experimental/webworker-packer/src/index.ts) |

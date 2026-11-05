@@ -341,6 +341,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Owns append-only Session instances and emits the durable session event feed.',
   },
   {
+    key: 'settingsSync',
+    pkg: 'experimental-settings-sync',
+    title: 'Experimental encrypted settings sync Remote',
+    mode: 'core',
+    consumers: ['experimental-client-ui-settings-sync'],
+    note: 'Signs in to Supabase and exchanges client-side encrypted settings and credential references.',
+  },
+  {
     key: 'speechController',
     pkg: 'experimental-api-speech-to-text',
     title: 'Experimental transcription Remote',

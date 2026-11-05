@@ -369,6 +369,9 @@ importers:
       '@deepseek-ai/dsh-experimental-session-titles-bundle':
         specifier: workspace:*
         version: link:../../packages/experimental/session-titles-bundle
+      '@deepseek-ai/dsh-experimental-settings-sync-bundle':
+        specifier: workspace:*
+        version: link:../../packages/experimental/settings-sync-bundle
       '@deepseek-ai/dsh-experimental-terminal-bundle':
         specifier: workspace:*
         version: link:../../packages/experimental/terminal-bundle
@@ -1016,6 +1019,9 @@ importers:
       '@deepseek-ai/dsh-experimental-plugin-market-bundle':
         specifier: workspace:*
         version: link:../../packages/experimental/plugin-market-bundle
+      '@deepseek-ai/dsh-experimental-settings-sync-bundle':
+        specifier: workspace:*
+        version: link:../../packages/experimental/settings-sync-bundle
       '@deepseek-ai/dsh-experimental-speech-to-text':
         specifier: workspace:*
         version: link:../../packages/experimental/speech-to-text
@@ -9339,6 +9345,51 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/experimental/client-ui-settings-sync:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-api-remotes':
+        specifier: workspace:*
+        version: link:../../api/remotes
+      '@deepseek-ai/dsh-client-locale':
+        specifier: workspace:*
+        version: link:../../client/locale
+      '@deepseek-ai/dsh-client-store':
+        specifier: workspace:*
+        version: link:../../client/store
+      '@deepseek-ai/dsh-client-test-runtime':
+        specifier: workspace:*
+        version: link:../../test-support/client-runtime
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: workspace:*
+        version: link:../../client/ui-primitives
+      '@deepseek-ai/dsh-client-ui-renderer':
+        specifier: workspace:*
+        version: link:../../client/ui-renderer
+      '@deepseek-ai/dsh-client-ui-settings':
+        specifier: workspace:*
+        version: link:../../client/ui-settings
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: workspace:*
+        version: link:../../client/ui-slots
+      '@deepseek-ai/dsh-experimental-settings-sync':
+        specifier: workspace:*
+        version: link:../settings-sync
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: workspace:*
+        version: link:../../typert/protocol
+      '@testing-library/react':
+        specifier: ^16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+
   packages/experimental/client-ui-stats:
     devDependencies:
       '@deepseek-ai/cordis':
@@ -10955,6 +11006,25 @@ importers:
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
+
+  packages/experimental/settings-sync-bundle:
+    dependencies:
+      '@deepseek-ai/dsh-experimental-client-ui-settings-sync':
+        specifier: workspace:*
+        version: link:../client-ui-settings-sync
+      '@deepseek-ai/dsh-experimental-settings-sync':
+        specifier: workspace:*
+        version: link:../settings-sync
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/cordis-plugin-include':
+        specifier: workspace:~
+        version: link:../../../vendor/include
+      js-yaml:
+        specifier: ^4.3.2
+        version: 4.3.2
 
   packages/experimental/skill-badge:
     devDependencies:

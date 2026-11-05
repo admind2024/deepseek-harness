@@ -36,7 +36,10 @@ export function deriveKey(password: string, salt: Buffer, params: KdfParams): Pr
   return scryptAsync(password.normalize('NFKC'), salt, KEY_BYTES, { ...params, maxmem: 256 * params.N * params.r })
 }
 
-/** @returns fresh 16-byte salt for a new key envelope. */
+/**
+ * Create a key envelope salt.
+ * @returns fresh 16-byte salt for a new key envelope.
+ */
 export function createSalt(): Buffer {
   return randomBytes(16)
 }
